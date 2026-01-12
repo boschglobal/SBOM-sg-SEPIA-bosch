@@ -1,0 +1,24 @@
+# =========================
+# Eclipse / STS IDE files
+# =========================
+.project
+.classpath
+.settings/
+.loadpath
+.factorypath
+
+# =========================
+# Maven build output
+# =========================
+target/
+
+# =========================
+# OS-specific files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Logs
+# =========================
+*.log
