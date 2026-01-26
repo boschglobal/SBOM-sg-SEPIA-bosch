@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   backend:
-    build: ./Tools/sbom-public-service
+    build: ./tools/sbom-public-service
     container_name: sbom-backend
     ports:
       - "9051:9051"
@@ -10,7 +10,7 @@ services:
       - ./data/sbom:/data/sbom
 
   frontend:
-    build: ./Tools/sbom-public-ui
+    build: ./tools/sbom-public-ui
     container_name: sbom-frontend
     ports:
       - "4200:4200"
