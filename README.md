@@ -86,7 +86,7 @@ For copyrights please see the [CONTRIBUTORS](CONTRIBUTORS) file.
 
 ## The Big Picture:
 
-![alt text](Images/SEPIA-workflow.png)
+![alt text](images/SEPIA-workflow.png)
 
 ## Proposed Solution :
 
@@ -100,15 +100,15 @@ For copyrights please see the [CONTRIBUTORS](CONTRIBUTORS) file.
 
 **Dashboard :** 
 
-![alt text](Images/Dashboard.png)
+![alt text](images/Dashboard.png)
 
 **Edit :** 
 
-![alt text](Images/image-2.png)
+![alt text](images/image-2.png)
 
 **Error log :**
 
-![alt text](Images/image-3.png)
+![alt text](images/image-3.png)
 
 ## Docker :
 ```
