@@ -100,7 +100,7 @@ For copyrights please see the [CONTRIBUTORS](CONTRIBUTORS) file.
 
 **Dashboard :** 
 
-![alt text](images/Dashboard.png)
+![alt text](images/dashboard.png)
 
 **Edit :** 
 
