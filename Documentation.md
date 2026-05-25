@@ -102,7 +102,6 @@ curl --noproxy localhost \
 
 - **`API_PATH`** – Backend service hosted location.
   Example:
-  - `https://fe0vmc2863.de.bosch.com:9053/customValidate`
   - `http://localhost:9053/customValidate`
 
 - **`schemaType`** – Indicates the uploaded file schema type:
