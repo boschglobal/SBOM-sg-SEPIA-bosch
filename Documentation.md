@@ -25,23 +25,23 @@ Users can upload an SBOM file in JSON format. Supported schema type versions are
 
 Click the **Validate** button after uploading the file. The uploaded SBOM is validated against the corresponding schema. If no errors are found, the BOM is valid. Otherwise, the file is not valid and the errors or missing properties are displayed.
 
-![alt text](Images/bom_upload.png)
+![alt text](images/bom_upload.png)
 
 The validated result is displayed under the **SBOM status**.
 
-![alt text](Images/validation_result.png)
+![alt text](images/validation_result.png)
 
 Users can click the **Edit** option under **Actions** to view and edit the uploaded SBOM.
 
-![alt text](Images/bomedit.png)
+![alt text](images/bomedit.png)
 
 View the error message details in the **Error List** tab.
 
-![alt text](Images/errorlist.png)
+![alt text](images/errorlist.png)
 
 Any changes made by the user can be viewed in the **ChangeLog** tab.
 
-![alt text](Images/changelog.png)
+![alt text](images/changelog.png)
 
 ---
 
@@ -146,31 +146,31 @@ Users can merge valid SBOMs of the same schema type.
 
 1. Select multiple SBOMs from the **SBOM status** list and click the **Merge** button.
 
-![alt text](Images/merge.png)
+![alt text](images/merge.png)
 
 2. Fill in the root-level metadata component information and submit.
 
-![alt text](Images/metadataInfo.png)
+![alt text](images/metadataInfo.png)
 
 3. The merged result is displayed.
 
-![alt text](Images/merge_result.png)
+![alt text](images/merge_result.png)
 
 #### CDQ – CycloneDX 1.6 Merge
 
 The user provides input component data, and the merged CycloneDX 1.6 SBOM is generated accordingly.
 
-![alt text](Images/cyclonedx_merge.png)
+![alt text](images/cyclonedx_merge.png)
 
 #### CDQ – SPDX 2.3 Merge
 
 The user provides input component data. The user-input package SPDX ID establishes the `contains` relationship between each package in the input files.
 
-![alt text](Images/spdx_merge.png)
+![alt text](images/spdx_merge.png)
 
 The user-input package SPDX ID establishes the `contains` relationship between each package in the input files.
 
-![alt text](Images/spdx_realtionship.png)
+![alt text](images/spdx_realtionship.png)
 
 ### 2. Upload & Validate SBOM File via `PowerShell Command`
 
