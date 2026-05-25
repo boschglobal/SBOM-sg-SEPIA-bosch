@@ -9,7 +9,7 @@ export class UploadModel {
     schemaFile!: File;
     index!: number;
     schema!: boolean;
-    timestamp!: any;
+    sessionId!: any;
     hidden!: boolean;
     sbomFileName!: string;
     schemaFileName!: string;

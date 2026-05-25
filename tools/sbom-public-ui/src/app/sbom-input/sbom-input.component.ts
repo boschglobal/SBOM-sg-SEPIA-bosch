@@ -16,12 +16,15 @@ import { Router } from '@angular/router';
 import { spdx_2_3_schema } from '../schema/spdx_2.3.schema';
 import { spdx_2_2_schema } from '../schema/spdx_2.2.schema';
 import { cyclonedx_1_4_schema } from '../schema/cyclonedx_1.4.schema';
+import { cdq_spdx_2_3_schema } from '../schema/cdq_spdx_2.3.schema';
 import { AttachmentText, ComponentType, CycloneDXSBOMStandard, License, LicenseIDs, OrganizationalContactObject } from '../models/cyclonedx.model';
-import { CreationInfo, externalRefs, Packages, primaryPackagePurpose, SpdxModel } from '../models/spdx.model';
+import { CreationInfo, externalRefs, Packages, primaryPackagePurpose, referenceCategory, SpdxModel } from '../models/spdx.model';
 import JSZip from 'jszip';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { HealthCheckService } from '../services/health-check.service';
+import { cdq_cyclonedx_1_6_schema } from '../schema/cdq_cyclonedx_1.6.schema';
+import { CDQComponentType, CDQCycloneDXSBOMStandard, CDQExternalReference, CDQLicense, CDQLicenseIDs, CDQOrganizationalContactObject, CDQOrganizationalEntityObject } from '../models/cdqcyclonedx.model';
 
 
 
@@ -62,6 +65,10 @@ export class SbomInputComponent {
   public fossidSchemaTypes = this.sbomInputService.schemaTypes.filter((sch: { value: string }) => (sch.value !== 'custom' && sch.value !== 'spdx'));
   public licenseInfoTypes = this.sbomInputService.licenseInfoTypes;
 
+
+
+  public cdqLicenseInfoTypes = this.sbomInputService.cdqLicenseInfoTypes;
+
   public uploadStatusList: UploadModel[] = [];
   public sbomListToProcess: UploadModel[] = [];
   public fileToUpload: UploadModel = new UploadModel();
@@ -71,11 +78,17 @@ export class SbomInputComponent {
   public licenseIdTypes = LicenseIDs;
   public mergeLicenseInfoType = 'licId';
 
+  public cdqLicenseIdTypes = CDQLicenseIDs;
+  public cdqMergeLicenseInfoType = 'licId';
+
+  public cdqMergeMetaLicenseInfoType = 'licId';
+
   public editorOptions: JsonEditorOptions = new JsonEditorOptions();
   public schemaViewerOptions: JsonEditorOptions = new JsonEditorOptions();
 
   public schemaTypesToMerge = new Set;
   public compTypeList = ComponentType;
+  public cdqcompTypeList = CDQComponentType;
   public validationErrors: any = [];
   fileNames: string[] = [];
   uploadFileCountTag: string[] = [];
@@ -94,6 +107,12 @@ export class SbomInputComponent {
   public mergedMeteCompLicense: License = new License();
 
   /**
+   * CDQ CycloneDx 1.6 Objects
+   */
+  public cdqCydxMerged: CDQCycloneDXSBOMStandard = new CDQCycloneDXSBOMStandard();
+
+
+  /**
    * SPDX Objects
    */
   public spdxMerged: SpdxModel = new SpdxModel();
@@ -104,6 +123,18 @@ export class SbomInputComponent {
   public spdxCreatorOrg!: String;
   public spdxCreatorPerson!: String;
   public primaryPackagePurposeList = primaryPackagePurpose;
+  public referenceCategoryList = referenceCategory;
+
+  /**
+   * CDQ SPDX Objects
+   */
+  public cdqSpdxMerged: SpdxModel = new SpdxModel();
+  public cdqSpdxMergedPackage: Packages = new Packages();
+  public cdqSpdxMergedPackageExternalRef: externalRefs = new externalRefs();
+  public cdqSpdxMergedCreationInfo: CreationInfo = new CreationInfo();
+  public cdqSpdxMergedcreators!: [String, ...String[]];
+  public cdqSpdxCreatorOrg!: String;
+  public cdqSpdxCreatorPerson!: String;
 
   /**
    * ViewChilds
@@ -181,6 +212,9 @@ export class SbomInputComponent {
               sessionStorage.setItem('token', new Date().getTime().toString());
             }
 
+            // CycloneDX 1.4 merged object defaults
+            // Initialize merged objects with default values to prevent undefined errors in the UI before merge happens
+
             this.cdxMerged.metadata.supplier.contact.push(new OrganizationalContactObject());
 
             if (!this.cdxMerged.metadata.component.licenses) {
@@ -192,6 +226,50 @@ export class SbomInputComponent {
                 license: new License()
               };
             }
+
+
+            // CDQ CycloneDX 1.6 merged object defaults
+            // Initialize with one empty license object to show in the UI, user can add more if needed
+
+            this.cdqCydxMerged.metadata.supplier.contact.push(new CDQOrganizationalContactObject());
+
+
+
+            if(!this.cdqCydxMerged.metadata.component.licenses) {
+              this.cdqCydxMerged.metadata.component.licenses = [];
+            }
+            if(!this.cdqCydxMerged.metadata.component.licenses[0]) {
+              this.cdqCydxMerged.metadata.component.licenses[0] = {
+                license: new CDQLicense()
+              };
+            }
+
+            if (!this.cdqCydxMerged.metadata.component.externalReferences) {
+              this.cdqCydxMerged.metadata.component.externalReferences = [];
+              this.cdqCydxMerged.metadata.component.externalReferences.push(new CDQExternalReference());
+              this.cdqCydxMerged.metadata.component.externalReferences[0].type = 'other';
+            }
+            if(!this.cdqCydxMerged.metadata.authors) {
+              this.cdqCydxMerged.metadata.authors = [];
+            }
+            if(!this.cdqCydxMerged.metadata.authors[0]) {
+              this.cdqCydxMerged.metadata.authors.push(new CDQOrganizationalContactObject());
+            }
+            if(!this.cdqCydxMerged.metadata.manufacturer) {
+              this.cdqCydxMerged.metadata.manufacturer = new CDQOrganizationalEntityObject();
+            }
+
+            // if(!this.cdqCydxMerged.metadata.licenses) {
+            //   this.cdqCydxMerged.metadata.licenses = [];
+            // }
+
+            // if (!this.cdqCydxMerged.metadata.licenses[0]) {
+            //   this.cdqCydxMerged.metadata.licenses[0] = {
+            //     license: new CDQLicense()
+            //   };
+            // }
+
+            // SPDX merged object defaults
 
             this.spdxMergedPackage.name = '';
             this.spdxMergedPackage.versionInfo = '';
@@ -217,6 +295,30 @@ export class SbomInputComponent {
             this.spdxMergedCreationInfo.comment = 'This SPDX file generated from Merge operation using SBOM Validator tool.'
 
             this.spdxMerged.creationInfo = this.spdxMergedCreationInfo;
+
+
+            // CDQ SPDX 2.3 merged object defaults
+
+            this.cdqSpdxMergedPackage.name = '';
+            this.cdqSpdxMergedPackage.versionInfo = '';
+            this.cdqSpdxMergedPackage.primaryPackagePurpose = null;
+            this.cdqSpdxMergedPackage.licenseConcluded = '';
+
+            this.cdqSpdxMergedPackage.externalRefs = [];
+            this.cdqSpdxMergedPackageExternalRef.referenceCategory = null;
+            this.cdqSpdxMergedPackage.externalRefs.push(this.cdqSpdxMergedPackageExternalRef);
+
+            this.cdqSpdxMerged.packages = [];
+            this.cdqSpdxMerged.packages.push(this.cdqSpdxMergedPackage);
+            this.cdqSpdxCreatorOrg = '';
+            this.cdqSpdxCreatorPerson = '';
+            this.cdqSpdxMergedcreators = ['Tool: SBOM Validator'];
+            this.cdqSpdxMergedcreators.push('Organization:' + this.cdqSpdxCreatorOrg);
+            this.cdqSpdxMergedcreators.push('Person:' + this.cdqSpdxCreatorPerson);
+            this.cdqSpdxMergedCreationInfo.creators = this.cdqSpdxMergedcreators;
+            this.cdqSpdxMergedCreationInfo.created = new Date().toISOString();
+            this.cdqSpdxMergedCreationInfo.comment = 'This SPDX file generated from Merge operation using SBOM Validator tool.'
+            this.cdqSpdxMerged.creationInfo = this.cdqSpdxMergedCreationInfo;
 
 
             //
@@ -246,16 +348,29 @@ export class SbomInputComponent {
       this.fileToEdit.schemaJsonString = JSON.stringify(spdx_2_2_schema);
       this.editorOptions.schema = spdx_2_2_schema;
       this.editorOptions.sortObjectKeys = true;
+    } else if (this.fileToEdit.schemaType === "cdqspdx2.3") {
+      this.fileToEdit.sbomJson = this.sbomInputService.initializeCDQSpdxUndefinedObjects(JSON.parse(this.fileToEdit.sbomJsonString)) ;
+      this.fileToEdit.schemaJsonString = JSON.stringify(cdq_spdx_2_3_schema);
+      this.editorOptions.schema = cdq_spdx_2_3_schema;
+      this.editorOptions.sortObjectKeys = true;
     }
     else if (this.fileToEdit.schemaType === "cyclonedx") {
       this.fileToEdit.sbomJson = this.sbomInputService.initializeCycloneDXUndefinedObjects(JSON.parse(this.fileToEdit.sbomJsonString));
       this.fileToEdit.schemaJsonString = JSON.stringify(cyclonedx_1_4_schema);
       this.editorOptions.schema = cyclonedx_1_4_schema;
       this.editorOptions.sortObjectKeys = false;
-    } else if (this.fileToEdit.schemaType === "custom") {
+    } else if (this.fileToEdit.schemaType === "cdqcydx") {
+      this.fileToEdit.sbomJson = this.sbomInputService.initializeCDQCycloneDXUndefinedObjects(JSON.parse(this.fileToEdit.sbomJsonString));
+      let sanitizedSchema = this.sanitizeSchemaObject(JSON.parse(JSON.stringify(cdq_cyclonedx_1_6_schema)));
+      this.fileToEdit.schemaJsonString = JSON.stringify(sanitizedSchema);
+      this.editorOptions.schema = sanitizedSchema;
+      this.editorOptions.sortObjectKeys = true;
+    }
+     else if (this.fileToEdit.schemaType === "custom") {
       this.fileToEdit.sbomJson = JSON.parse(this.fileToEdit.sbomJsonString);
-      this.fileToEdit.schemaJsonString = this.processCustomSchemaJsonString(this.fileToEdit.schemaJsonString);
-      this.editorOptions.schema = JSON.parse(this.fileToEdit.schemaJsonString);
+      let sanitizedSchema = this.sanitizeSchemaObject(JSON.parse(this.fileToEdit.schemaJsonString));
+      this.fileToEdit.schemaJsonString = JSON.stringify(sanitizedSchema);
+      this.editorOptions.schema = sanitizedSchema;
     }
     this.validationErrors = this.fileToEdit.customErrorDetails;
   }
@@ -266,15 +381,69 @@ export class SbomInputComponent {
     };
   }
 
-  processCustomSchemaJsonString(schemaJson: string) {
-    schemaJson = schemaJson.replaceAll(/[,]+\n*\s*"format":\s*".*"[,]+/g, ",");
-    schemaJson = schemaJson.replaceAll(/[,]+\n*\s*"format":\s*".*"/g, "");
-    schemaJson = schemaJson.replaceAll(/\n*\s*"format":\s*".*"[,]+/g, "");
-    let jsonObject = JSON.parse(schemaJson);
-    if ('$schema' in jsonObject) {
-      delete jsonObject['$schema'];
+  cdqclearLicenses() {
+    if (this.cdqMergeLicenseInfoType === 'licText') {
+      this.cdqCydxMerged.metadata.component.licenses[0] = {
+        expression: ''
+      };
+    } else {
+      this.cdqCydxMerged.metadata.component.licenses[0] = {
+        license: new CDQLicense()
+      };
     }
-    return JSON.stringify(jsonObject);
+  }
+
+  cdqMetadataClearLicenses() {
+    this.cdqCydxMerged.metadata.licenses[0] = {
+      license: new CDQLicense()
+    };
+  }
+
+  /**
+   * Formats natively supported by AJV (used internally by jsoneditor).
+   * Any format not in this list will be removed from the schema to prevent
+   * "unknown format" validation errors.
+   */
+  private readonly supportedFormats: Set<string> = new Set([
+    'date', 'date-time', 'time', 'duration',
+    'uri', 'uri-reference', 'uri-template',
+    'email',
+    'hostname',
+    'ipv4', 'ipv6',
+    'uuid',
+    'regex',
+    'json-pointer', 'relative-json-pointer'
+  ]);
+
+  /**
+   * Recursively walks a JSON Schema object and removes unsupported "format"
+   * values so that AJV (inside jsoneditor) does not throw errors.
+   * Also removes the top-level "$schema" key which can cause issues.
+   */
+  sanitizeSchemaObject(schema: any): any {
+    if (schema === null || schema === undefined || typeof schema !== 'object') {
+      return schema;
+    }
+
+    if (Array.isArray(schema)) {
+      return schema.map(item => this.sanitizeSchemaObject(item));
+    }
+
+    const sanitized: any = {};
+    for (const key of Object.keys(schema)) {
+      if (key === '$schema') {
+        continue;
+      }
+      if (key === 'format' && typeof schema[key] === 'string') {
+        if (this.supportedFormats.has(schema[key])) {
+          sanitized[key] = schema[key];
+        }
+        // else: skip unsupported format (e.g. iri-reference, idn-email)
+      } else {
+        sanitized[key] = this.sanitizeSchemaObject(schema[key]);
+      }
+    }
+    return sanitized;
   }
 
   /**
@@ -396,6 +565,7 @@ export class SbomInputComponent {
       this.fileUploadSuccess = true;
       this.fileUploadmessage = `Please upload a valid JSON file.`;
       this.calloutType = 'info';
+      this.hideCalloutAfterInterval();
     } else {
       this.fileNames.push(this.jsonFileToUpload.name);
       this.fileUploadSuccess = false;
@@ -406,10 +576,26 @@ export class SbomInputComponent {
       }
       this.isLoading = true;
       this.sbomInputService.uploadFile(form, this.index, isSchema,this.jsonFileToUpload).subscribe((data: any) => {
-        this.fileToUpload = data;
-        this.removeFileNamefromList(this.fileToUpload.sbomFileName, form);
-        this.logAction(data, 'Upload');
-      });
+        this.isLoading = false;
+        if (data.status !== 200) {
+          this.fileUploadSuccess = true;
+          this.fileUploadmessage = `File upload failed: ${data.message}`;
+          this.calloutType = 'error';
+          this.hideCalloutAfterInterval();
+          this.fileNames = [];
+        }else {
+          this.fileToUpload = data;
+          this.removeFileNamefromList(this.fileToUpload.sbomFileName, form);
+          this.logAction(data, 'Upload');
+        }
+      },
+      (error) => {
+        this.fileUploadmessage = `File upload failed: ${error}`;
+        this.fileUploadSuccess = true;
+        this.calloutType = 'error';
+        this.hideCalloutAfterInterval();
+      }
+      );
     }
   }
 
@@ -539,12 +725,14 @@ export class SbomInputComponent {
         this.fileUploadmessage = `File validation failed: ${this.fileUploadmessage}`;
         this.calloutType = 'error';
       }
+      this.hideCalloutAfterInterval();
 
     },
       (error) => {
         this.fileUploadmessage = `File validation failed: ${error}`;
         this.fileUploadSuccess = true;
         this.calloutType = 'error';
+        this.hideCalloutAfterInterval();
       })
   }
 
@@ -564,13 +752,14 @@ export class SbomInputComponent {
       } else {
         this.fileUploadmessage = `File upload failed: ${this.fileUploadmessage}`;
         this.calloutType = 'error';
+        this.hideCalloutAfterInterval();
       }
     },
       (error) => {
         this.fileUploadmessage = `File upload failed: ${error}`;
         this.fileUploadSuccess = true;
         this.calloutType = 'error';
-        //this.hideCalloutAfterInterval();
+        this.hideCalloutAfterInterval();
       }
     )
   }
@@ -578,7 +767,8 @@ export class SbomInputComponent {
   hideCalloutAfterInterval() {
     setTimeout(() => {
       this.fileUploadSuccess = false;
-    }, 5000); // Hide after 5 seconds
+      this.fileUploadmessage = '';
+    }, 6000); // Hide after 4 seconds
   }
 
   resetForm(form: NgForm) {
@@ -604,7 +794,7 @@ export class SbomInputComponent {
     this.enableModalSave = false;
     console.log(this.cdxMerged);
     this.schemaTypesToMerge.values
-    this.sbomInputService.mergeSboms(this.sbomListToProcess, this.cdxMerged, this.spdxMerged, this.mergeType).subscribe((data: UploadModel) => {
+    this.sbomInputService.mergeSboms(this.sbomListToProcess, this.cdxMerged, this.spdxMerged, this.cdqSpdxMerged,this.cdqCydxMerged,this.mergeType).subscribe((data: UploadModel) => {
       this.fileToEdit = data;
       this.initializeUndefinedObjects();
       this.openModal(modal);

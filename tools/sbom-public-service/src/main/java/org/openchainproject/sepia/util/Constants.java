@@ -27,6 +27,8 @@ public class Constants {
 	public static final String CYCLONEDX_LC = "cyclonedx";
 	public static final String SPDX_LC = "spdx";
 	public static final String SPDX2_2_LC = "spdx2.2";
+	public static final String CDQ_SPDX2_3_LC = "cdqspdx2.3";
+	public static final String CDQ_CYDX1_6_LC = "cdqcydx";
 	
 	public static final String CDX_14 = "cdx14";
 	public static final String SPDX_23 = "spdx23";

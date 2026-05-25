@@ -95,7 +95,7 @@
 		<dependency>
 			<groupId>org.cyclonedx</groupId>
 			<artifactId>cyclonedx-core-java</artifactId>
-			<version>7.3.2</version>
+			<version>12.1.0</version>
 		</dependency>
         
 		<dependency>
@@ -125,7 +125,7 @@
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<version>1.18.20</version>
+			<version>1.18.34</version>
 			<optional>true</optional>
 		</dependency>
 		<dependency>
@@ -148,6 +148,14 @@
             <version>3.9.0</version>
             <type>pom</type>
         </dependency>
+
+		<dependency>
+			<groupId>com.networknt</groupId>
+			<artifactId>json-schema-validator</artifactId>
+			<version>1.5.6</version>
+		</dependency>
+        
+        
 	</dependencies>
 
 	

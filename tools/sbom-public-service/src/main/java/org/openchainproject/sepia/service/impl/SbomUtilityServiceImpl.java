@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.cyclonedx.CycloneDxSchema.Version;
+import org.cyclonedx.Version;
 import org.json.JSONObject;
 import org.openchainproject.sepia.model.BomFilesInputModel;
 import org.openchainproject.sepia.model.ChangeLog;
@@ -52,6 +52,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.flipkart.zjsonpatch.JsonDiff;
 import com.networknt.schema.JsonSchema;
 import com.networknt.schema.JsonSchemaFactory;
+import com.networknt.schema.SchemaValidatorsConfig;
 import com.networknt.schema.SpecVersion;
 import com.networknt.schema.SpecVersion.VersionFlag;
 import com.networknt.schema.ValidationMessage;
@@ -98,6 +99,12 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 			case "v1_0":
 				ver = Version.VERSION_10;
 				break;
+			case "v1_5":
+				ver = Version.VERSION_15;
+				break;
+			case "v1_6":
+				ver = Version.VERSION_16;
+				break;
 			default:
 				ver = Version.VERSION_14;
 			}
@@ -133,6 +140,10 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 			case "http://json-schema.org/draft-07/schema#":
 				version = SpecVersion.VersionFlag.V7;
 				break;
+				
+			case "https://json-schema.org/draft/2020-12/schema":
+				version = SpecVersion.VersionFlag.V202012;
+				break;	
 			default: version = null;	
 			}
 		} catch (Exception e) {
@@ -154,12 +165,36 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 			BomFilesInputModel sbomInputModel, boolean isFromApi) {
 		try {
 
-			if(isFromApi && sbomInputModel.getTimestamp() == null) {
+			if(isFromApi && sbomInputModel.getSessionId() == null) {
 				String timestamp = Long.toString(System.currentTimeMillis());
-				sbomInputModel.setTimestamp(timestamp);
+				sbomInputModel.setSessionId(timestamp);
+			}
+			if (isFromApi) {
+				// Normalize schemaType and auto-derive schemaVersion if not provided
+				normalizeSchemaFields(sbomInputModel);
+
+				// Auto-generate index based on existing entries for this timestamp
+				String rootPath = sbomUploadPath + sbomInputModel.getSessionId();
+				File rootDirectory = new File(rootPath);
+				
+				if (rootDirectory.exists() && rootDirectory.isDirectory()) {
+				  if(!sbomInputModel.isSchema())	{
+					  File[] existingFolders = rootDirectory.listFiles();
+					  sbomInputModel.setIndex(existingFolders != null ? existingFolders.length : 0);
+				  }
+				} else {
+					sbomInputModel.setIndex(0);
+				}
+				// Take sbomFileName from the uploaded file
+				if (inputFileOptional != null && inputFileOptional.isPresent()) {
+					MultipartFile[] files = inputFileOptional.get();
+					if (files.length > 0 && files[0].getOriginalFilename() != null) {
+						sbomInputModel.setSbomFileName(files[0].getOriginalFilename());
+					}
+				}
 			}
 			if (inputFileOptional != null && inputFileOptional.isPresent()) {
-				String rootPath = sbomUploadPath + sbomInputModel.getTimestamp();
+				String rootPath = sbomUploadPath + sbomInputModel.getSessionId();
 				MultipartFile[] inputFiles = inputFileOptional.get();
 
 				File uploadDestination = getFileFromModel(sbomInputModel);
@@ -183,14 +218,16 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 				if(uploadedFile != null) {
 					sbomInputModel.setFileHash(sbomFileUtils.generateFileHash(uploadedFile));	
 				}
-				if (isFromApi) {
+				if ((isFromApi && !sbomInputModel.isSchema() && !sbomInputModel.getSchemaType().equalsIgnoreCase(Constants.CUSTOM)) || (isFromApi && sbomInputModel.isSchema() && sbomInputModel.getSchemaType().equalsIgnoreCase(Constants.CUSTOM))) {
 					sbomInputModel = validateSboms(sbomInputModel, false, false);
 					sbomInputModel.setSbomJsonString(null);
 				}
 			}
-
+			sbomInputModel.setStatus(HttpStatus.OK.value());
 		} catch (Exception e) {
 			LOGGER.error("Exception occurred in uploadInputFile() while the given file", e);
+			sbomInputModel.setMessage(e.getMessage());
+			sbomInputModel.setStatus(HttpStatus.BAD_REQUEST.value());
 		}
 		return sbomInputModel;
 	}
@@ -246,7 +283,16 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 	private BomFilesInputModel setValuesForBomFileInput(File indexDirectory) {
 
 		BomFilesInputModel bomFilesInputModel = new BomFilesInputModel();
-		bomFilesInputModel.setIndex(Integer.parseInt(indexDirectory.getName()));
+		String dirName = indexDirectory.getName();
+		String[] parts = dirName.split("_");
+		if (parts.length > 0) {
+			try {
+				bomFilesInputModel.setIndex(Integer.parseInt(parts[0]));
+			} catch (NumberFormatException e) {
+				LOGGER.error("Failed to parse index from directory name: {}", dirName, e);
+				bomFilesInputModel.setIndex(-1); // or handle as appropriate
+			}
+		}
 
 		String[] subDirNames = indexDirectory.list();
 		if (subDirNames.length > 0) {
@@ -365,6 +411,12 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 					} else if (schemaType.equalsIgnoreCase(Constants.SPDX2_2_LC)) {
 						versionFlag = SpecVersion.VersionFlag.V7;
 						schemaFileName = "/spdx_2.2.schema.json";
+					} else if (schemaType.equalsIgnoreCase(Constants.CDQ_SPDX2_3_LC)) {
+						versionFlag = SpecVersion.VersionFlag.V201909;
+						schemaFileName = "/CDQspdx_2.3.schema.json";
+					}  else if (schemaType.equalsIgnoreCase(Constants.CDQ_CYDX1_6_LC)) {
+						versionFlag = SpecVersion.VersionFlag.V7;
+						schemaFileName = "/CDQcyclonedx_1.6.json";
 					} 
 					else if (schemaType.equalsIgnoreCase(Constants.CUSTOM)) {
 						String schemaJsonString = bomFilesInputModel.getSchemaJsonString();
@@ -388,7 +440,11 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 					inputJsonStream = new ByteArrayInputStream(
 							bomFilesInputModel.getSbomJsonString().getBytes(StandardCharsets.UTF_8));
 					json = mapper.readTree(inputJsonStream);
-					schema = schemaFactory.getSchema(schemaStream);
+					SchemaValidatorsConfig config = SchemaValidatorsConfig.builder()
+							.cacheRefs(false)
+							.preloadJsonSchema(false)
+							.build();
+					schema = schemaFactory.getSchema(schemaStream, config);
 
 					Set<ValidationMessage> validationResult = schema.validate(json);
 					bomFilesInputModel.setValid(validationResult.isEmpty());
@@ -469,7 +525,12 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 			}
 
 			bomFilesInputModel.setFileHash(sbomFileUtils.generateFileHash(bomFilesInputModel.getSbomJsonString()));
-			bomFilesInputModel.setMessage("File validated successfully");
+			int errorCount = bomFilesInputModel.getErrorDetails() == null ? 0 : bomFilesInputModel.getErrorDetails().size();
+			if (errorCount == 0) {
+				bomFilesInputModel.setMessage("File uploaded successfully and validation is completed without any errors");
+			} else {
+				bomFilesInputModel.setMessage("File uploaded successfully and validation is completed with " + errorCount + " errors");
+			}
 			bomFilesInputModel.setStatus(HttpStatus.OK.value());
 		} catch (Exception e) {
 			LOGGER.error("Exception occured while validation the Sbom file", e);
@@ -715,7 +776,7 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 
 			if (bomInputList != null && !bomInputList.isEmpty()) {
 
-				String timestamp = bomInputList.get(0).getTimestamp();
+				String timestamp = bomInputList.get(0).getSessionId();
 
 				for (BomFilesInputModel curBom : bomInputList) {
 					File inputFile = new File(getFilePathFromModel(curBom) + File.separator + curBom.getSbomFileName());
@@ -735,10 +796,15 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 					String rootPath = sbomUploadPath + timestamp;
 					bomFileInput = SbomMergeUtil.hierarchicalMerge(rootPath, bomInputList, bomMetadata,
 							cycloneDxVersion, isFromApp);
+				} else if (schemaType.equalsIgnoreCase(Constants.CDQ_CYDX1_6_LC)) {
+					Version cycloneDxVersion = getCycloneDxOutputFileVersion("v1_6");
+					String rootPath = sbomUploadPath + timestamp;
+					bomFileInput = SbomMergeUtil.cdqhierarchicalMerge(rootPath, bomInputList, bomMetadata,
+							cycloneDxVersion, isFromApp);
 				}
 
 				bomFileInput.setSchemaType(bomInputList.get(0).getSchemaType());
-				bomFileInput.setTimestamp(timestamp);
+				bomFileInput.setSessionId(timestamp);
 				bomFileInput = validateSboms(bomFileInput, true, false);
 				bomFileInput.setFileHash(sbomFileUtils.generateFileHash(bomFileInput.getSbomJsonString()));
 
@@ -762,7 +828,7 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 	@Override
 	public void clearSession(BomFilesInputModel sbomInputModel) {
 		try {
-			File sessionDir = new File(sbomUploadPath + sbomInputModel.getTimestamp());
+			File sessionDir = new File(sbomUploadPath + sbomInputModel.getSessionId());
 			FileUtils.deleteDirectory(sessionDir);
 		} catch (Exception e) {
 			LOGGER.error("Exception occurred while trying to rename the selected directory", e);
@@ -925,10 +991,109 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 	}
 	
 	private String getFilePathFromModel(BomFilesInputModel sbomInputModel) {
-		return sbomUploadPath + sbomInputModel.getTimestamp() + File.separator + sbomInputModel.getIndex()
+		return sbomUploadPath + sbomInputModel.getSessionId() + File.separator + sbomInputModel.getIndex()
 		+ "_" + sbomInputModel.getSchemaType();
 	}
 	
-	
+	@Override
+	public void writeResponseLog(BomFilesInputModel sbomInputModel) {
+		try {
+			String outputDir;
+			if (!StringUtils.isEmpty(sbomInputModel.getLogOutputPath())) {
+				outputDir = sbomInputModel.getLogOutputPath();
+			} else {
+				outputDir = getFilePathFromModel(sbomInputModel);
+			}
+			File dir = new File(outputDir);
+			if (!dir.exists()) {
+				dir.mkdirs();
+			}
+
+			String fileName = sbomInputModel.getSbomFileName();
+			if (StringUtils.isEmpty(fileName)) {
+				fileName = "upload";
+			}
+			// Remove extension and append _log.txt
+			int dotIndex = fileName.lastIndexOf('.');
+			String baseName = (dotIndex > 0) ? fileName.substring(0, dotIndex) : fileName;
+			String logFileName = baseName + "_log.txt";
+
+			File logFile = new File(dir, logFileName);
+			ObjectMapper mapper = new ObjectMapper();
+			String responseJson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(sbomInputModel);
+
+			try (PrintWriter writer = new PrintWriter(new FileOutputStream(logFile))) {
+				writer.write(responseJson);
+			}
+			LOGGER.info("Response log written to: {}", logFile.getAbsolutePath());
+		} catch (Exception e) {
+			LOGGER.error("Failed to write response log file", e);
+		}
+	}
+
+	/**
+	 * Normalizes schemaType aliases and auto-derives schemaVersion when not provided.
+	 * This allows API users to pass simplified values like "cdqcydx" instead of "cdqcydx1.6".
+	 */
+	private void normalizeSchemaFields(BomFilesInputModel sbomInputModel) {
+		String schemaType = sbomInputModel.getSchemaType();
+		if (StringUtils.isEmpty(schemaType)) {
+			return;
+		}
+
+		// Normalize schemaType aliases
+		String normalizedType = schemaType.toLowerCase().trim();
+		switch (normalizedType) {
+			case "cdqcydx":
+			case "cdqcyclonedx":
+			case "cdqcydx1.6":
+				sbomInputModel.setSchemaType(Constants.CDQ_CYDX1_6_LC);
+				normalizedType = Constants.CDQ_CYDX1_6_LC;
+				break;
+			case "cyclonedx":
+			case "cydx":
+				sbomInputModel.setSchemaType(Constants.CYCLONEDX_LC);
+				normalizedType = Constants.CYCLONEDX_LC;
+				break;
+			case "spdx":
+				sbomInputModel.setSchemaType(Constants.SPDX_LC);
+				normalizedType = Constants.SPDX_LC;
+				break;
+			case "spdx2.2":
+				sbomInputModel.setSchemaType(Constants.SPDX2_2_LC);
+				normalizedType = Constants.SPDX2_2_LC;
+				break;
+			case "cdqspdx":
+			case "cdqspdx2.3":
+				sbomInputModel.setSchemaType(Constants.CDQ_SPDX2_3_LC);
+				normalizedType = Constants.CDQ_SPDX2_3_LC;
+				break;
+			default:
+				break;
+		}
+
+		// Auto-derive schemaVersion if not provided
+		if (StringUtils.isEmpty(sbomInputModel.getSchemaVersion())) {
+			switch (normalizedType) {
+				case "cyclonedx":
+					sbomInputModel.setSchemaVersion("1.4");
+					break;
+				case "cdqcydx":
+					sbomInputModel.setSchemaVersion("1.6");
+					break;
+				case "spdx":
+					sbomInputModel.setSchemaVersion("2.3");
+					break;
+				case "spdx2.2":
+					sbomInputModel.setSchemaVersion("2.2");
+					break;
+				case "cdqspdx2.3":
+					sbomInputModel.setSchemaVersion("2.3");
+					break;
+				default:
+					break;
+			}
+		}
+	}
 	
 }

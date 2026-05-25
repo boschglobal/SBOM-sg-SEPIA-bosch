@@ -48,7 +48,8 @@ public class BomFilesInputModel {
 	private int index;
 	
 	@ApiModelProperty(required = true)
-	private String timestamp;
+	//private String timestamp;
+	private String sessionId;
 	
 	@ApiModelProperty(hidden = true)
 	private String sbomJsonString;
@@ -96,6 +97,9 @@ public class BomFilesInputModel {
         }
         this.errorDetails.addAll(errorModel);
     }
+	
+	@ApiModelProperty(required = false)
+	private String logOutputPath;
 	
 	@ApiModelProperty(required = false)
 	private String fossidServer;

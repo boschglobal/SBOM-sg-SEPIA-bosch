@@ -79,7 +79,9 @@ SPDX-License-Identifier: MIT -->
                             <span *ngIf="fileToEdit.schemaType == 'spdx'">SPDX V2.3</span>
                             <span *ngIf="fileToEdit.schemaType == 'spdx2.2'">SPDX V2.2</span>
                             <span *ngIf="fileToEdit.schemaType == 'cyclonedx'">CycloneDX V1.4</span>
-                            <span *ngIf="fileToEdit.schemaType != 'spdx' && fileToEdit.schemaType != 'spdx2.2' && fileToEdit.schemaType != 'cyclonedx'">
+                            <span *ngIf="fileToEdit.schemaType == 'cdqspdx2.3'">CDQ SPDX V2.3</span>
+                            <span *ngIf="fileToEdit.schemaType == 'cdqcydx'">CDQ CycloneDX V1.6</span>
+                            <span *ngIf="fileToEdit.schemaType != 'spdx' && fileToEdit.schemaType != 'spdx2.2' && fileToEdit.schemaType != 'cyclonedx' && fileToEdit.schemaType != 'cdqspdx2.3' && fileToEdit.schemaType != 'cdqcydx'">
                               {{ fileToEdit.schemaType | uppercase }} 1.0
                             </span>
                         </div>
@@ -174,7 +176,8 @@ SPDX-License-Identifier: MIT -->
         <div class="row">
             <h4>{{ mergeType | uppercase }} Merge</h4>
         </div>
-        <div [hidden]="mergeType == 'cyclonedx'">
+        <!-- SPDX -->
+        <div [hidden]="(mergeType == 'cyclonedx' || mergeType == 'cdqcydx' || mergeType == 'cdqspdx2.3')">
             <div class="row">
                 <h4 style="font-size: 20px;">Package Information</h4>
             </div>
@@ -218,7 +221,63 @@ SPDX-License-Identifier: MIT -->
             </div>
 
         </div>
-        <div [hidden]="mergeType == 'spdx'">
+        <!-- CDQ SPDX 2.3 -->
+        <div [hidden]="(mergeType == 'cyclonedx' || mergeType == 'cdqcydx' || mergeType == 'spdx')">
+            <div class="row">
+                <h4 style="font-size: 20px;">CDQ Package Information</h4>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                  <label for="packagename" class="form-label">Package name</label>
+                  <input type="text" class="form-control custom-input" id="packagename" name="packagename" required
+                    [(ngModel)]="cdqSpdxMerged.packages[0].name" />
+                </div>
+                <div class="col-md-3">
+                    <label for="packageversion" class="form-label">Package version</label>
+                    <input type="text" class="form-control custom-input" id="packageversion" name="packageversion" required
+                    [(ngModel)]="cdqSpdxMerged.packages[0].versionInfo" />
+                </div>
+                <div class="col-md-3">
+                  <label for="primary_package_purpose" class="form-label">Primary Package Purpose</label>
+                  <select class="form-select custom-select-input" id="primary_package_purpose" name="primary_package_purpose"
+                    [(ngModel)]="cdqSpdxMerged.packages[0].primaryPackagePurpose" required>
+                    <option *ngFor="let type of primaryPackagePurposeList | keyvalue" [value]="type.key">
+                      {{ type.value }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <label for="PackageLicenseConcluded" class="form-label">Package License Concluded</label>
+                  <input type="text" class="form-control custom-input" id="PackageLicenseConcluded" name="PackageLicenseConcluded" required
+                  [(ngModel)]="cdqSpdxMerged.packages[0].licenseConcluded" />
+                </div>
+            </div>
+            <div class="row">
+                 <div class="col-md-3">
+                  <label for="external_refcategory" class="form-label">External Reference Category</label>
+                  <select class="form-select custom-select-input" id="external_refcategory" name="external_refcategory"
+                    [(ngModel)]="cdqSpdxMerged.packages[0].externalRefs[0].referenceCategory" required>
+                    <option *ngFor="let type of referenceCategoryList | keyvalue" [value]="type.key">
+                      {{ type.value }}
+                    </option>
+                  </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6">
+                  <label for="creators_organization" class="form-label">Creators Organization</label>
+                  <input type="text" class="form-control custom-input" id="creators_organization" name="creators_organization" required
+                  [(ngModel)]="cdqSpdxMerged.creationInfo.creators[1]" />
+                </div>
+                <div class="col-md-6">
+                  <label for="creators_person" class="form-label">Creators Person</label>
+                  <input type="text" class="form-control custom-input" id="creators_person" name="creators_person" required
+                    [(ngModel)]="cdqSpdxMerged.creationInfo.creators[2]" />
+                </div>
+            </div>
+        </div>
+        <!-- CycloneDX -->
+        <div [hidden]="(mergeType == 'spdx' || mergeType == 'cdqspdx2.3' || mergeType == 'cdqcydx')">
             <div class="row">
                 <h4 style="font-size: 20px;">Metadata</h4>
             </div>
@@ -275,7 +334,7 @@ SPDX-License-Identifier: MIT -->
                 <div class="col-md-6" [hidden]="mergeLicenseInfoType != 'licText'">
                   <label for="license_text" class="form-label">Component License Text</label>
                   <textarea class="form-control custom-input" id="license_text" name="license_text" rows="4"
-                    [(ngModel)]="this.cdxMerged.metadata.component.licenses[0].license.text.content"></textarea>
+                    [(ngModel)]="cdxMerged.metadata.component.licenses[0].expression"></textarea>
                 </div>
             </div>
             <div class="row">
@@ -290,6 +349,132 @@ SPDX-License-Identifier: MIT -->
                     [(ngModel)]="cdxMerged.metadata.supplier.contact[0].email" />
                 </div>
             </div>
+        </div>
+        <!--CDQ CycloneDX 1.6-->
+        <div [hidden]="(mergeType == 'spdx' || mergeType == 'cdqspdx2.3' || mergeType == 'cyclonedx')">
+            <div class="row">
+              <h4 style="font-size: 20px;">CDQ CycloneDX Metadata</h4>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                  <label for="meta_comp_name" class="form-label">Component Name</label>
+                  <input type="text" class="form-control custom-input" id="meta_comp_name" name="meta_comp_name" required
+                    [(ngModel)]="cdqCydxMerged.metadata.component.name" />
+                </div>
+                <div class="col-md-3">
+                    <label for="meta_comp_group" class="form-label">Component Group</label>
+                    <input type="text" class="form-control custom-input" id="meta_comp_group" name="meta_comp_group" required
+                      [(ngModel)]="cdqCydxMerged.metadata.component.group" />
+                </div>
+                <div class="col-md-3">
+                  <label for="meta_comp_type" class="form-label">Component Type</label>
+                  <select class="form-select custom-select-input" id="meta_comp_type" name="meta_comp_type"
+                    [(ngModel)]="cdqCydxMerged.metadata.component.type" required>
+                    <option *ngFor="let type of cdqcompTypeList | keyvalue" [value]="type.key">
+                      {{ type.value }}
+                    </option>
+                  </select>
+                </div>
+                <div class="col-md-3">
+                   <label for="meta_comp_version" class="form-label">Component Version</label>
+                   <input type="text" class="form-control custom-input" id="meta_comp_version" name="meta_comp_version" required
+                      [(ngModel)]="cdqCydxMerged.metadata.component.version" />
+                </div>
+
+            </div>
+            <div class="row">
+              <div class="col-md-3">
+                  <label for="meta_comp_purl" class="form-label">Component PURL</label>
+                  <input type="text" class="form-control custom-input" id="meta_comp_purl" name="meta_comp_purl" required
+                    [(ngModel)]="cdqCydxMerged.metadata.component.purl" />
+              </div>
+              <div class="col-md-3">
+                 <label for="merge_license_info_type" class="form-label">Component License Information Type</label>
+                  <select class="form-select custom-select-input" id="merge_license_info_type" name="merge_license_info_type"
+                    [(ngModel)]="cdqMergeLicenseInfoType" (change)="cdqclearLicenses()" required>
+                    <option *ngFor="let infoType of cdqLicenseInfoTypes" [value]="infoType.value">
+                      {{ infoType.label }}
+                    </option>
+                  </select>
+              </div>
+              <div class="col-md-3" *ngIf="cdqMergeLicenseInfoType === 'licId'">
+                    <label for="license_id" class="form-label">Component License ID</label>
+                    <select class="form-select custom-select-input" id="license_id" name="license_id"
+                      [(ngModel)]="this.cdqCydxMerged.metadata.component.licenses[0].license!.id" required>
+                      <option *ngFor="let idType of cdqLicenseIdTypes | keyvalue" [value]="idType.key">
+                        {{ idType.value }}
+                      </option>
+                    </select>
+              </div>
+              <div class="col-md-3" *ngIf="cdqMergeLicenseInfoType === 'licName'">
+                  <label for="license_name" class="form-label">Component License Name</label>
+                  <input type="text" class="form-control custom-input" id="license_name" name="license_name" required
+                    [(ngModel)]="this.cdqCydxMerged.metadata.component.licenses[0].license!.name" />
+              </div>
+              <div class="col-md-3" *ngIf="cdqMergeLicenseInfoType === 'licText'">
+                  <label for="license_text" class="form-label">Component License Text</label>
+                  <textarea class="form-control custom-input" id="license_text" name="license_text" rows="4"
+                    [(ngModel)]="cdqCydxMerged.metadata.component.licenses[0].expression"></textarea>
+              </div>
+              <div class="col-md-3">
+                  <label for="meta_externalRef_url" class="form-label">ExternalReferences URL</label>
+                  <input type="text" class="form-control custom-input" id="meta_externalRef_url" name="meta_externalRef_url" required
+                    [(ngModel)]="cdqCydxMerged.metadata.component.externalReferences[0].url" />
+              </div>
+
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                  <label for="meta_sup_name" class="form-label">Supplier Name</label>
+                  <input type="text" class="form-control custom-input" id="meta_sup_name" name="meta_sup_name" required
+                    [(ngModel)]="cdqCydxMerged.metadata.supplier.name" />
+                </div>
+                <div class="col-md-6">
+                  <label for="meta_sup_email" class="form-label">Supplier Contact Email</label>
+                  <input type="text" class="form-control custom-input" id="meta_sup_email" name="meta_sup_email" required
+                    [(ngModel)]="cdqCydxMerged.metadata.supplier.contact[0].email" />
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                  <label for="meta_authors_name" class="form-label">Authors Name</label>
+                  <input type="text" class="form-control custom-input" id="meta_authors_name" name="meta_authors_name" required
+                    [(ngModel)]="cdqCydxMerged.metadata.authors[0].name" />
+                </div>
+                <div class="col-md-3">
+                  <label for="meta_manufacturer_name" class="form-label">Manufacturer Name</label>
+                  <input type="text" class="form-control custom-input" id="meta_manufacturer_name" name="meta_manufacturer_name" required
+                    [(ngModel)]="cdqCydxMerged.metadata.manufacturer.name" />
+                </div>
+            </div>
+            <!-- CDQ Metadata License Information
+            <div class="row">
+              <div class="col-md-3">
+                 <label for="merge_license_info_type" class="form-label">Metadata License Information Type</label>
+                  <select class="form-select custom-select-input" id="merge_license_info_type" name="merge_license_info_type"
+                    [(ngModel)]="cdqMergeMetaLicenseInfoType" (change)="cdqMetadataClearLicenses()" required>
+                    <option *ngFor="let infoType of cdqLicenseInfoTypes" [value]="infoType.value">
+                      {{ infoType.label }}
+                    </option>
+                  </select>
+              </div>
+              <div class="col-md-3" [hidden]="cdqMergeMetaLicenseInfoType != 'licId'">
+                    <label for="metadata_license_id" class="form-label">Metadata License ID</label>
+                    <select class="form-select custom-select-input" id="metadata_license_id" name="metadata_license_id"
+                      [(ngModel)]="this.cdqCydxMerged.metadata.licenses[0].license.id" required>
+                      <option *ngFor="let idType of cdqLicenseIdTypes | keyvalue" [value]="idType.key">
+                        {{ idType.value }}
+                      </option>
+                    </select>
+              </div>
+              <div class="col-md-6" [hidden]="cdqMergeMetaLicenseInfoType != 'licName'">
+                  <label for="license_name" class="form-label">Metadata License Name</label>
+                  <input type="text" class="form-control custom-input" id="license_name" name="license_name" required
+                    [(ngModel)]="this.cdqCydxMerged.metadata.licenses[0].license.name" />
+              </div>
+            </div>
+             -->
+
         </div>
         <div class="row">
             <div class="col-md-8"></div>
@@ -439,7 +624,9 @@ SPDX-License-Identifier: MIT -->
                          <span *ngIf="item.schemaType == 'spdx'">SPDX V2.3</span>
                          <span *ngIf="item.schemaType == 'spdx2.2'">SPDX V2.2</span>
                          <span *ngIf="item.schemaType == 'cyclonedx'">CycloneDX V1.4</span>
-                         <span *ngIf="item.schemaType != 'spdx' && item.schemaType != 'spdx2.2' && item.schemaType != 'cyclonedx'">
+                         <span *ngIf="item.schemaType == 'cdqcydx'">CDQ CycloneDX V1.6</span>
+                         <span *ngIf="item.schemaType == 'cdqspdx2.3'">CDQ SPDX V2.3</span>
+                         <span *ngIf="item.schemaType != 'spdx' && item.schemaType != 'spdx2.2' && item.schemaType != 'cyclonedx' && item.schemaType != 'cdqcydx' && item.schemaType != 'cdqspdx2.3'">
                           {{ item.schemaType | uppercase }} 1.0
                          </span>
                     </td>

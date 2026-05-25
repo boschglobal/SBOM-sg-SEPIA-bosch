@@ -16,12 +16,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.AbstractMap;
 import java.util.Stack;
 import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
-import org.cyclonedx.BomGeneratorFactory;
-import org.cyclonedx.CycloneDxSchema.Version;
+import org.cyclonedx.Version;
+import org.cyclonedx.generators.BomGeneratorFactory;
+import org.cyclonedx.model.Annotation;
 import org.cyclonedx.model.Bom;
 import org.cyclonedx.model.BomReference;
 import org.cyclonedx.model.Component;
@@ -34,8 +36,19 @@ import org.cyclonedx.model.Hash.Algorithm;
 import org.cyclonedx.model.License;
 import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.model.Metadata;
+import org.cyclonedx.model.Property;
 import org.cyclonedx.model.Service;
+import org.cyclonedx.model.Signature;
 import org.cyclonedx.model.Tool;
+import org.cyclonedx.model.attestation.Declarations;
+import org.cyclonedx.model.attestation.Assessor;
+import org.cyclonedx.model.attestation.Claim;
+import org.cyclonedx.model.attestation.Targets;
+import org.cyclonedx.model.definition.Definition;
+import org.cyclonedx.model.definition.Standard;
+import org.cyclonedx.model.formulation.Formula;
+import org.cyclonedx.model.metadata.ToolInformation;
+import org.cyclonedx.model.Pedigree;
 import org.cyclonedx.model.vulnerability.Vulnerability;
 import org.cyclonedx.model.vulnerability.Vulnerability.Affect;
 import org.cyclonedx.parsers.JsonParser;
@@ -47,6 +60,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -78,7 +92,9 @@ public class SbomMergeUtil {
 
 		Bom mergedBom = mapper.readValue(bomMetadata, Bom.class);
 		List<ChangeLog> changeLogsList = new ArrayList<>();
-
+		Set<String> bomrefIdSet = new java.util.HashSet<>();
+		Map<String, String> bomrefIdMap = new HashMap<>();
+		
 		if (mergedBom != null) {
 
 			String serialNumber = "urn:uuid:" + UUID.randomUUID();
@@ -90,7 +106,7 @@ public class SbomMergeUtil {
 
 			String metaCompBomRef= getMetaCompBomRef(component);
 			component.setBomRef(metaCompBomRef);
-			changeLogsList = addChangeLog(changeLogsList, getMetaCompBomRef(component), Constants.MERGED_FILE, null, Constants.ADD, Constants.CYCLONEDX_LC);
+			changeLogsList = addChangeLog(changeLogsList, getMetaCompBomRef(component), Constants.MERGED_FILE, "$.metadata.component.bom-ref", Constants.ADD, Constants.CYCLONEDX_LC);
 			component.setPurl("pkg:" + component.getType() + "/" + component.getGroup() + "/" + component.getName()
 					+ "@" + component.getVersion());
 
@@ -140,6 +156,10 @@ public class SbomMergeUtil {
 		mergedBom.setDependencies(new ArrayList<Dependency>());
 		mergedBom.setCompositions(new ArrayList<Composition>());
 		mergedBom.setVulnerabilities(new ArrayList<Vulnerability>());
+		// Top-level BOM signature: clear any signature from bomMetadata since the merged
+		// content differs from what was originally signed. Component-level and
+		// service-level signatures are preserved as-is from the input BOMs.
+		mergedBom.setSignature(null);
 
 		List<Dependency> bomSubjectDependencies = new ArrayList<>();
 
@@ -164,30 +184,41 @@ public class SbomMergeUtil {
 				metaComp.getComponents().addAll(bom.getComponents());
 			}
 
-			// add a namespace to existing BOM refs
-			getCompBomRef(metaComp, changeLogsList, bomInput.getSbomFileName());
+			// add a namespace to existing BOM refs with dedup
+			String compBasePath = "$.components[" + mergedBom.getComponents().size() + "]";
+			deduplicateCompBomRefs(metaComp, changeLogsList, bomInput.getSbomFileName(), bomrefIdSet, bomrefIdMap, compBasePath, Constants.CYCLONEDX_LC);
 
 			// make sure we have a BOM ref set and add top level dependency reference
 			if (metaComp.getBomRef() == null) {
 				String bomRefString = getMetaCompBomRef(metaComp);
-				if(bomRefSet.contains(bomRefString)) {
-					bomRefString = bomRefString + ":" + UUID.randomUUID();
+				if(bomrefIdSet.contains(bomRefString)) {
+					String newBomRefString = bomRefString + ":" + UUID.randomUUID();
+					bomrefIdMap.put(bomRefString, newBomRefString);
+					bomRefString = newBomRefString;
 				}
-				bomRefSet.add(bomRefString);
+				bomrefIdSet.add(bomRefString);
 				metaComp.setBomRef(bomRefString);
-				changeLogsList = addChangeLog(changeLogsList, bomRefString, bomInput.getSbomFileName(), null, Constants.ADD, Constants.CYCLONEDX_LC);
-			}
+				changeLogsList = addChangeLog(changeLogsList, bomRefString, bomInput.getSbomFileName(), compBasePath + ".bom-ref", Constants.ADD, Constants.CYCLONEDX_LC);
+			} 
+//			else {
+//				String existingRef = metaComp.getBomRef();
+//				if(bomrefIdSet.contains(existingRef)) {
+//					String newRef = existingRef + ":" + UUID.randomUUID();
+//					bomrefIdMap.put(existingRef, newRef);
+//					metaComp.setBomRef(newRef);
+//					changeLogsList = addChangeLog(changeLogsList, getNewValueForChangeLog(newRef, existingRef), bomInput.getSbomFileName(), compBasePath + ".bom-ref", Constants.REPLACE, Constants.CYCLONEDX_LC);
+//				}
+//				bomrefIdSet.add(metaComp.getBomRef());
+//			}
 			bomSubjectDependencies.add(new Dependency(metaComp.getBomRef()));
 
 			mergedBom.getComponents().add(metaComp);
 
 			// services
 			if (bom.getServices() != null) {
-				for (Service service : bom.getServices()) {
-					service.setBomRef(getCompBomRef(bom.getMetadata().getComponent(), service.getBomRef()));
-					changeLogsList = addChangeLog(changeLogsList, service.getBomRef(), bomInput.getSbomFileName(), null, Constants.ADD, Constants.CYCLONEDX_LC);
-					mergedBom.getServices().add(service);
-				}
+				int serviceStartIdx = mergedBom.getServices().size();
+				deduplicateServiceBomRefs(bom.getServices(), bomrefIdSet, bomrefIdMap, changeLogsList, bomInput.getSbomFileName(), serviceStartIdx, "$.services", Constants.CYCLONEDX_LC);
+				mergedBom.getServices().addAll(bom.getServices());
 			}
 
 			// external references
@@ -195,24 +226,24 @@ public class SbomMergeUtil {
 				mergedBom.getExternalReferences().addAll(bom.getExternalReferences());
 			}
 
-			// dependencies
+			// dependencies (remap refs using bomrefIdMap)
 			if (bom.getDependencies() != null) {
-				changeLogsList = getDepBomRefs(getMetaCompBomRef(metaComp), bom.getDependencies(), changeLogsList,
-						bomInput.getSbomFileName());
+				int depStartIdx = mergedBom.getDependencies().size();
+				remapDependencyRefs(bom.getDependencies(), bomrefIdMap, changeLogsList, bomInput.getSbomFileName(), "$.dependencies", depStartIdx, false, Constants.CYCLONEDX_LC);
 				mergedBom.getDependencies().addAll(bom.getDependencies());
 			}
 
-			// compositions
+			// compositions (remap refs using bomrefIdMap)
 			if (bom.getCompositions() != null) {
-				changeLogsList = getCompositions(getMetaCompBomRef(bom.getMetadata().getComponent()),
-						bom.getCompositions(), changeLogsList, bomInput.getSbomFileName());
+				int compStartIdx = mergedBom.getCompositions().size();
+				remapCompositionRefs(bom.getCompositions(), bomrefIdMap, changeLogsList, bomInput.getSbomFileName(), compStartIdx, Constants.CYCLONEDX_LC);
 				mergedBom.getCompositions().addAll(bom.getCompositions());
 			}
 
-			// vulnerabilities
+			// vulnerabilities (dedup bom-ref + remap affects refs)
 			if (bom.getVulnerabilities() != null) {
-				changeLogsList = getVulnRefs(getMetaCompBomRef(mergedBom.getMetadata().getComponent()),
-						bom.getVulnerabilities(), changeLogsList, bomInput.getSbomFileName());
+				int vulnStartIdx = mergedBom.getVulnerabilities().size();
+				deduplicateVulnRefs(bom.getVulnerabilities(), bomrefIdSet, bomrefIdMap, changeLogsList, bomInput.getSbomFileName(), vulnStartIdx, Constants.CYCLONEDX_LC);
 				mergedBom.getVulnerabilities().addAll(bom.getVulnerabilities());
 			}
 
@@ -243,12 +274,246 @@ public class SbomMergeUtil {
 		bomFilesInputModel.setSbomJsonString(mergedBomJsonString);
 		bomFilesInputModel.setChangeLogsList(changeLogsList);
 		
-		for(ChangeLog changeLog : bomFilesInputModel.getChangeLogsList()) {
-			String path = JsonPathFinder.getPath(new JSONObject(bomFilesInputModel.getSbomJsonString()), "bom-ref", changeLog.getValue(), false);
-			changeLog.setPath(path);
+		if(!isFromApp) {
+			bomFilesInputModel.setSbomJson(mergedBom);
 		}
 		
-		if(!isFromApp) {
+		return bomFilesInputModel;
+	}
+	
+	/**
+	 * CycloneDX 1.6 hierarchical merge.
+	 * Applies all CycloneDX 1.4 merge logic (bom-ref dedup, dependency/composition remap,
+	 * vulnerability handling, signature clearing) plus new CycloneDX 1.6 objects:
+	 * annotations, formulation, declarations, definitions, and properties.
+	 */
+	public static BomFilesInputModel cdqhierarchicalMerge(String rootPath, List<BomFilesInputModel> bomInputList,
+			String bomMetadata, Version version, boolean isFromApp) throws Exception {
+
+		ObjectMapper mapper = new ObjectMapper();
+		Bom mergedBom = mapper.readValue(bomMetadata, Bom.class);
+		List<ChangeLog> changeLogsList = new ArrayList<>();
+		Set<String> bomrefIdSet = new HashSet<>();
+		Map<String, String> bomrefIdMap = new HashMap<>();
+
+		if (mergedBom != null) {
+
+			String serialNumber = "urn:uuid:" + UUID.randomUUID();
+
+			Metadata metadata = mergedBom.getMetadata();
+			Component component = metadata.getComponent();
+
+			// CycloneDX 1.6 uses toolChoice (ToolInformation) instead of tools list
+			ToolInformation tools = new ToolInformation();
+			List<Component> toolsComponentsList = new ArrayList<>();
+			Component toolscomponent = new Component();
+			toolscomponent.setName("SBOM Validator");
+			toolsComponentsList.add(toolscomponent);
+			tools.setComponents(toolsComponentsList);
+			metadata.setToolChoice(tools);
+
+			String metaCompBomRef = getMetaCompBomRef(component);
+			component.setBomRef(metaCompBomRef);
+			changeLogsList = addChangeLog(changeLogsList, getMetaCompBomRef(component), Constants.MERGED_FILE,
+					"$.metadata.component.bom-ref", Constants.ADD, Constants.CDQ_CYDX1_6_LC);
+
+			List<License> licenseList = new ArrayList<>();
+			License license = new License();
+			license.setId("CC-BY-4.0");
+			licenseList.add(license);
+
+			LicenseChoice licenseChoice = new LicenseChoice();
+			licenseChoice.setLicenses(licenseList);
+
+			metadata.setComponent(component);
+			metadata.setTimestamp(new Date());
+			metadata.setLicenseChoice(licenseChoice);
+			mergedBom.setMetadata(metadata);
+			mergedBom.setSerialNumber(serialNumber);
+		}
+
+		// initialize all top-level lists (1.4 + 1.6 objects)
+		mergedBom.setComponents(new ArrayList<Component>());
+		mergedBom.setServices(new ArrayList<Service>());
+		mergedBom.setExternalReferences(new ArrayList<ExternalReference>());
+		mergedBom.setDependencies(new ArrayList<Dependency>());
+		mergedBom.setCompositions(new ArrayList<Composition>());
+		mergedBom.setVulnerabilities(new ArrayList<Vulnerability>());
+		mergedBom.setAnnotations(new ArrayList<Annotation>());
+		mergedBom.setFormulation(new ArrayList<Formula>());
+		mergedBom.setProperties(new ArrayList<Property>());
+		// declarations: merge into first non-null or keep null
+		Declarations mergedDeclarations = null;
+		// definitions: merge standards lists
+		Definition mergedDefinitions = null;
+
+		// Top-level BOM signature: clear since the merged content differs from what was originally signed.
+		// Component-level and service-level signatures are preserved as-is from the input BOMs.
+		mergedBom.setSignature(null);
+
+		List<Dependency> bomSubjectDependencies = new ArrayList<>();
+
+		for (BomFilesInputModel bomInput : bomInputList) {
+			JsonParser jsonParser = new JsonParser();
+			File inputFile = new File(rootPath + File.separator + bomInput.getIndex() + "_cdqcydx"
+					+ File.separator + bomInput.getSbomFileName());
+			Bom bom = jsonParser.parse(Files.readAllBytes(inputFile.toPath()));
+
+			Component metaComp = bom.getMetadata().getComponent();
+
+			if (metaComp == null) {
+				throw new Exception(bom.getSerialNumber() == null
+						? "Required metadata (top level) component is missing from BOM."
+						: "Required metadata (top level) component is missing from BOM " + bom.getSerialNumber() + ".");
+			}
+
+			if (metaComp.getComponents() == null) {
+				metaComp.setComponents(new ArrayList<Component>());
+			}
+			if (bom.getComponents() != null) {
+				metaComp.getComponents().addAll(bom.getComponents());
+			}
+
+			// add a namespace to existing BOM refs with dedup
+			String compBasePath = "$.components[" + mergedBom.getComponents().size() + "]";
+			deduplicateCompBomRefs(metaComp, changeLogsList, bomInput.getSbomFileName(), bomrefIdSet, bomrefIdMap, compBasePath, Constants.CDQ_CYDX1_6_LC);
+
+			// make sure we have a BOM ref set and add top level dependency reference
+			if (metaComp.getBomRef() == null) {
+				String bomRefString = getMetaCompBomRef(metaComp);
+				if (bomrefIdSet.contains(bomRefString)) {
+					String newBomRefString = bomRefString + ":" + UUID.randomUUID();
+					bomrefIdMap.put(bomRefString, newBomRefString);
+					bomRefString = newBomRefString;
+				}
+				bomrefIdSet.add(bomRefString);
+				metaComp.setBomRef(bomRefString);
+				changeLogsList = addChangeLog(changeLogsList, bomRefString, bomInput.getSbomFileName(),
+						compBasePath + ".bom-ref", Constants.ADD, Constants.CDQ_CYDX1_6_LC);
+			} 
+//			else {
+//				String existingRef = metaComp.getBomRef();
+//				if (bomrefIdSet.contains(existingRef)) {
+//					String newRef = existingRef + ":" + UUID.randomUUID();
+//					bomrefIdMap.put(existingRef, newRef);
+//					metaComp.setBomRef(newRef);
+//					changeLogsList = addChangeLog(changeLogsList, getNewValueForChangeLog(newRef, existingRef),
+//							bomInput.getSbomFileName(), compBasePath + ".bom-ref", Constants.REPLACE, Constants.CDQ_CYDX1_6_LC);
+//				}
+//				bomrefIdSet.add(metaComp.getBomRef());
+//			}
+			bomSubjectDependencies.add(new Dependency(metaComp.getBomRef()));
+
+			mergedBom.getComponents().add(metaComp);
+
+			// services (with dedup and nested service traversal)
+			if (bom.getServices() != null) {
+				int serviceStartIdx = mergedBom.getServices().size();
+				deduplicateServiceBomRefs(bom.getServices(), bomrefIdSet, bomrefIdMap, changeLogsList,
+						bomInput.getSbomFileName(), serviceStartIdx, "$.services", Constants.CDQ_CYDX1_6_LC);
+				mergedBom.getServices().addAll(bom.getServices());
+			}
+
+			// external references
+			if (bom.getExternalReferences() != null) {
+				mergedBom.getExternalReferences().addAll(bom.getExternalReferences());
+			}
+
+			// dependencies (remap refs using bomrefIdMap)
+			if (bom.getDependencies() != null) {
+				int depStartIdx = mergedBom.getDependencies().size();
+				remapDependencyRefs(bom.getDependencies(), bomrefIdMap, changeLogsList,
+						bomInput.getSbomFileName(), "$.dependencies", depStartIdx, false, Constants.CDQ_CYDX1_6_LC);
+				mergedBom.getDependencies().addAll(bom.getDependencies());
+			}
+
+			// compositions (remap refs using bomrefIdMap)
+			if (bom.getCompositions() != null) {
+				int compStartIdx = mergedBom.getCompositions().size();
+				remapCompositionRefs(bom.getCompositions(), bomrefIdMap, changeLogsList,
+						bomInput.getSbomFileName(), compStartIdx, Constants.CDQ_CYDX1_6_LC);
+				mergedBom.getCompositions().addAll(bom.getCompositions());
+			}
+
+			// vulnerabilities (dedup bom-ref + remap affects refs)
+			if (bom.getVulnerabilities() != null) {
+				int vulnStartIdx = mergedBom.getVulnerabilities().size();
+				deduplicateVulnRefs(bom.getVulnerabilities(), bomrefIdSet, bomrefIdMap, changeLogsList,
+						bomInput.getSbomFileName(), vulnStartIdx, Constants.CDQ_CYDX1_6_LC);
+				mergedBom.getVulnerabilities().addAll(bom.getVulnerabilities());
+			}
+
+			// ---- CycloneDX 1.6 new objects ----
+
+			// annotations (bom-ref dedup + subjects BomReference remap)
+			if (bom.getAnnotations() != null) {
+				int annotStartIdx = mergedBom.getAnnotations().size();
+				deduplicateAnnotationBomRefs(bom.getAnnotations(), bomrefIdSet, bomrefIdMap, changeLogsList,
+						bomInput.getSbomFileName(), annotStartIdx);
+				mergedBom.getAnnotations().addAll(bom.getAnnotations());
+			}
+
+			// formulation (Formula bom-ref dedup + inner components/services dedup)
+			if (bom.getFormulation() != null) {
+				int formulaStartIdx = mergedBom.getFormulation().size();
+				deduplicateFormulaBomRefs(bom.getFormulation(), bomrefIdSet, bomrefIdMap, changeLogsList,
+						bomInput.getSbomFileName(), formulaStartIdx);
+				mergedBom.getFormulation().addAll(bom.getFormulation());
+			}
+
+			// declarations (assessor, claim bom-ref dedup + targets component/service dedup)
+			if (bom.getDeclarations() != null) {
+				mergedDeclarations = mergeDeclarations(mergedDeclarations, bom.getDeclarations(),
+						bomrefIdSet, bomrefIdMap, changeLogsList, bomInput.getSbomFileName());
+			}
+
+			// definitions (standards bom-ref dedup)
+			if (bom.getDefinitions() != null) {
+				mergedDefinitions = mergeDefinitions(mergedDefinitions, bom.getDefinitions(),
+						bomrefIdSet, bomrefIdMap, changeLogsList, bomInput.getSbomFileName());
+			}
+
+			// properties (simple pass-through, no bom-ref)
+			if (bom.getProperties() != null) {
+				mergedBom.getProperties().addAll(bom.getProperties());
+			}
+		}
+
+		if (mergedBom.getMetadata().getComponent() != null) {
+			Dependency dependency = new Dependency(mergedBom.getMetadata().getComponent().getBomRef());
+			dependency.setDependencies(bomSubjectDependencies);
+			mergedBom.getDependencies().add(dependency);
+		}
+
+		// set merged declarations and definitions
+		mergedBom.setDeclarations(mergedDeclarations);
+		mergedBom.setDefinitions(mergedDefinitions);
+
+		// cleanup empty top level elements
+		if (mergedBom.getComponents().isEmpty())
+			mergedBom.setComponents(null);
+		if (mergedBom.getServices().isEmpty())
+			mergedBom.setServices(null);
+		if (mergedBom.getExternalReferences().isEmpty())
+			mergedBom.setExternalReferences(null);
+		if (mergedBom.getDependencies().isEmpty() && mergedBom.getCompositions().isEmpty())
+			mergedBom.setCompositions(null);
+		if (mergedBom.getVulnerabilities().isEmpty())
+			mergedBom.setVulnerabilities(null);
+		if (mergedBom.getAnnotations().isEmpty())
+			mergedBom.setAnnotations(null);
+		if (mergedBom.getFormulation().isEmpty())
+			mergedBom.setFormulation(null);
+		if (mergedBom.getProperties().isEmpty())
+			mergedBom.setProperties(null);
+
+		String mergedBomJsonString = BomGeneratorFactory.createJson(version, mergedBom).toJsonString();
+
+		BomFilesInputModel bomFilesInputModel = new BomFilesInputModel();
+		bomFilesInputModel.setSbomJsonString(mergedBomJsonString);
+		bomFilesInputModel.setChangeLogsList(changeLogsList);
+
+		if (!isFromApp) {
 			bomFilesInputModel.setSbomJson(mergedBom);
 		}
 		
@@ -284,103 +549,494 @@ public class SbomMergeUtil {
 		
 		return bomRef;
 	}
+	
+	private static List<ChangeLog> deduplicateCompBomRefs(Component topComponent, List<ChangeLog> changeLogsList,
+			String fileName, Set<String> bomrefIdSet, Map<String, String> bomrefIdMap, String basePath, String schemaType) {
+		String metaCompBomRef = getMetaCompBomRef(topComponent);
+		Stack<AbstractMap.SimpleEntry<Component, String>> components = new Stack<>();
+		components.push(new AbstractMap.SimpleEntry<>(topComponent, basePath));
 
-	private static List<ChangeLog> getCompBomRef(Component topComponent, List<ChangeLog> changeLogsList,
-			String fileName) {
-		return getCompBomRef(getMetaCompBomRef(topComponent), topComponent, changeLogsList, fileName);
-	}
-
-	private static List<ChangeLog> getCompBomRef(String metaCompBomRef, Component topComponent,
-			List<ChangeLog> changeLogsList, String fileName) {
-		// cairo@1.6.1
-		Stack<Component> components = new Stack<>();
-		components.push(topComponent);
-
-		while (!components.isEmpty()) { // cairo
-			Component currentComponent = components.pop();
+		while (!components.isEmpty()) {
+			AbstractMap.SimpleEntry<Component, String> entry = components.pop();
+			Component currentComponent = entry.getKey();
+			String currentPath = entry.getValue();
 
 			if (currentComponent.getComponents() != null) {
-				for (Component subComponent : currentComponent.getComponents()) {
-					components.push(subComponent);
+				for (int j = 0; j < currentComponent.getComponents().size(); j++) {
+					components.push(new AbstractMap.SimpleEntry<>(
+							currentComponent.getComponents().get(j),
+							currentPath + ".components[" + j + "]"));
 				}
 			}
+
+			// also traverse pedigree ancestors, descendants, variants
+			Pedigree pedigree = currentComponent.getPedigree();
+			if (pedigree != null) {
+				if (pedigree.getAncestors() != null && pedigree.getAncestors().getComponents() != null) {
+					List<Component> ancestors = pedigree.getAncestors().getComponents();
+					for (int j = 0; j < ancestors.size(); j++) {
+						components.push(new AbstractMap.SimpleEntry<>(
+								ancestors.get(j),
+								currentPath + ".pedigree.ancestors[" + j + "]"));
+					}
+				}
+				if (pedigree.getDescendants() != null && pedigree.getDescendants().getComponents() != null) {
+					List<Component> descendants = pedigree.getDescendants().getComponents();
+					for (int j = 0; j < descendants.size(); j++) {
+						components.push(new AbstractMap.SimpleEntry<>(
+								descendants.get(j),
+								currentPath + ".pedigree.descendants[" + j + "]"));
+					}
+				}
+				if (pedigree.getVariants() != null && pedigree.getVariants().getComponents() != null) {
+					List<Component> variants = pedigree.getVariants().getComponents();
+					for (int j = 0; j < variants.size(); j++) {
+						components.push(new AbstractMap.SimpleEntry<>(
+								variants.get(j),
+								currentPath + ".pedigree.variants[" + j + "]"));
+					}
+				}
+			}
+
 			String tempBomRef = getMetaCompBomRef(currentComponent);
+			String newBomRef = null;
 
 			if (!tempBomRef.equalsIgnoreCase(metaCompBomRef)) {
-				currentComponent.setBomRef(getCompBomRef(metaCompBomRef, tempBomRef));
-				changeLogsList = addChangeLog(changeLogsList, tempBomRef, fileName, null, Constants.ADD, Constants.CYCLONEDX_LC);
-			}
-		}
-
-		return changeLogsList;
-	}
-
-	private static List<ChangeLog> getVulnRefs(String bomRefNamespace, List<Vulnerability> vulnerabilities,
-			List<ChangeLog> changeLogsList, String fileName) {
-		Stack<Vulnerability> pendingVulnerabilities = new Stack<>();
-		pendingVulnerabilities.addAll(vulnerabilities);
-
-		while (!pendingVulnerabilities.isEmpty()) {
-			Vulnerability vulnerability = pendingVulnerabilities.pop();
-
-			vulnerability.setBomRef(getCompBomRef(bomRefNamespace, vulnerability.getBomRef()));
-			changeLogsList = addChangeLog(changeLogsList, vulnerability.getBomRef(), fileName, null, Constants.ADD, Constants.CYCLONEDX_LC);
-
-			if (vulnerability.getAffects() != null) {
-				for (Affect affect : vulnerability.getAffects()) {
-					affect.setRef(bomRefNamespace);
+				if (!bomrefIdSet.contains(tempBomRef)) {
+					bomrefIdSet.add(tempBomRef);
+					currentComponent.setBomRef(tempBomRef);
+					changeLogsList = addChangeLog(changeLogsList,
+							tempBomRef,
+							fileName, currentPath + ".bom-ref", Constants.ADD, schemaType);
+				} else {
+					newBomRef = tempBomRef + "@" + SbomFileUtils.generateUuid();
+					bomrefIdMap.put(tempBomRef, newBomRef);
+					bomrefIdSet.add(newBomRef);
+					currentComponent.setBomRef(newBomRef);
+					changeLogsList = addChangeLog(changeLogsList,
+							(newBomRef == null ? tempBomRef : getNewValueForChangeLog(newBomRef, tempBomRef)),
+							fileName, currentPath + ".bom-ref", Constants.REPLACE, schemaType);
 				}
 			}
 		}
+
 		return changeLogsList;
 	}
+
+	private static void deduplicateServiceBomRefs(List<Service> services,
+			Set<String> bomrefIdSet, Map<String, String> bomrefIdMap,
+			List<ChangeLog> changeLogsList, String fileName, int startIdx, String pathPrefix, String schemaType) {
+		Stack<AbstractMap.SimpleEntry<Service, String>> pendingServices = new Stack<>();
+		for (int i = 0; i < services.size(); i++) {
+			pendingServices.push(new AbstractMap.SimpleEntry<>(services.get(i), pathPrefix + "[" + (startIdx + i) + "]"));
+		}
+
+		while (!pendingServices.isEmpty()) {
+			AbstractMap.SimpleEntry<Service, String> entry = pendingServices.pop();
+			Service service = entry.getKey();
+			String servicePath = entry.getValue();
+
+			// recurse into nested sub-services
+			if (service.getServices() != null) {
+				for (int j = 0; j < service.getServices().size(); j++) {
+					pendingServices.push(new AbstractMap.SimpleEntry<>(
+							service.getServices().get(j),
+							servicePath + ".services[" + j + "]"));
+				}
+			}
+
+			String serviceBomRef = service.getBomRef();
+			if (serviceBomRef != null) {
+				if (!bomrefIdSet.contains(serviceBomRef)) {
+					bomrefIdSet.add(serviceBomRef);
+				} else {
+					String newServiceBomRef = serviceBomRef + "@" + UUID.randomUUID();
+					bomrefIdMap.put(serviceBomRef, newServiceBomRef);
+					bomrefIdSet.add(newServiceBomRef);
+					service.setBomRef(newServiceBomRef);
+					changeLogsList = addChangeLog(changeLogsList,
+							getNewValueForChangeLog(newServiceBomRef, serviceBomRef),
+							fileName, servicePath + ".bom-ref", Constants.REPLACE, schemaType);
+				}
+			} else {
+				String newServiceBomRef = "service@" + UUID.randomUUID();
+				bomrefIdSet.add(newServiceBomRef);
+				service.setBomRef(newServiceBomRef);
+				changeLogsList = addChangeLog(changeLogsList, newServiceBomRef, fileName, servicePath + ".bom-ref", Constants.ADD, schemaType);
+			}
+		}
+	}
+
+	
 
 	private static List<ChangeLog> getDepBomRefs(String bomRefNamespace, List<Dependency> dependencies,
-			List<ChangeLog> changeLogsList, String fileName) {
-		Stack<Dependency> pendingDependencies = new Stack<>();
-		pendingDependencies.addAll(dependencies);
+			List<ChangeLog> changeLogsList, String fileName, String basePath, int indexOffset, boolean isDependsOn) {
+		for (int i = 0; i < dependencies.size(); i++) {
+			Dependency dependency = dependencies.get(i);
+			String depPath = basePath + "[" + (indexOffset + i) + "]";
 
-		while (!pendingDependencies.isEmpty()) {
-			Dependency dependency = pendingDependencies.pop();
-
-			if (dependency.getDependencies() != null) {
-				for (Dependency subDependency : dependency.getDependencies()) {
-					pendingDependencies.push(subDependency);
-				}
+			if (!isDependsOn && dependency.getDependencies() != null) {
+				changeLogsList = getDepBomRefs(bomRefNamespace, dependency.getDependencies(), changeLogsList,
+						fileName, depPath + ".dependsOn", 0, true);
 			}
 			String bomRefString = getCompBomRef(bomRefNamespace, dependency.getRef());
-			changeLogsList = addChangeLog(changeLogsList, bomRefString, fileName, null, Constants.ADD, Constants.CYCLONEDX_LC);
+			String refPath = isDependsOn ? depPath : depPath + ".ref";
+			changeLogsList = addChangeLog(changeLogsList, bomRefString, fileName, refPath, Constants.ADD, Constants.CYCLONEDX_LC);
 		}
 
 		return changeLogsList;
 	}
 
-	private static List<ChangeLog> getCompositions(String bomRefNamespace, List<Composition> compositions,
-			List<ChangeLog> changeLogsList, String fileName) {
-		for (Composition composition : compositions) {
+	private static List<ChangeLog> deduplicateVulnRefs(List<Vulnerability> vulnerabilities,
+			Set<String> bomrefIdSet, Map<String, String> bomrefIdMap,
+			List<ChangeLog> changeLogsList, String fileName, int startIdx, String schemaType) {
+		for (int v = 0; v < vulnerabilities.size(); v++) {
+			Vulnerability vulnerability = vulnerabilities.get(v);
+			String vulnPath = "$.vulnerabilities[" + (startIdx + v) + "]";
+			String vulnRef = vulnerability.getBomRef();
+			if (vulnRef != null && !vulnRef.isEmpty()) {
+				if (!bomrefIdSet.contains(vulnRef)) {
+					bomrefIdSet.add(vulnRef);
+				} else {
+					String newVulnRef = vulnRef + "@" + SbomFileUtils.generateUuid();
+					bomrefIdMap.put(vulnRef, newVulnRef);
+					bomrefIdSet.add(newVulnRef);
+					vulnerability.setBomRef(newVulnRef);
+					changeLogsList = addChangeLog(changeLogsList, getNewValueForChangeLog(newVulnRef, vulnRef), fileName, vulnPath + ".bom-ref", Constants.REPLACE, schemaType);
+				}
+			}
+
+			// remap affects refs using bomrefIdMap
+			if (vulnerability.getAffects() != null) {
+				for (int a = 0; a < vulnerability.getAffects().size(); a++) {
+					Affect affect = vulnerability.getAffects().get(a);
+					if (affect.getRef() != null && bomrefIdMap.containsKey(affect.getRef())) {
+						String ref = affect.getRef();
+						String newAffectRef = bomrefIdMap.get(ref);
+						affect.setRef(newAffectRef);
+						changeLogsList = addChangeLog(changeLogsList, getNewValueForChangeLog(newAffectRef, ref), fileName, vulnPath + ".affects[" + a + "].ref", Constants.REPLACE, schemaType);
+					}
+				}
+			}
+		}
+		return changeLogsList;
+	}
+
+	private static void remapDependencyRefs(List<Dependency> dependencies,
+			Map<String, String> bomrefIdMap, List<ChangeLog> changeLogsList, String fileName,
+			String basePath, int indexOffset, boolean isDependsOn, String schemaType) {
+		for (int i = 0; i < dependencies.size(); i++) {
+			Dependency dependency = dependencies.get(i);
+			String depPath = basePath + "[" + (indexOffset + i) + "]";
+
+			// recurse into sub-dependencies (serialized as dependsOn string array)
+			if (!isDependsOn && dependency.getDependencies() != null) {
+				remapDependencyRefs(dependency.getDependencies(), bomrefIdMap, changeLogsList, fileName,
+						depPath + ".dependsOn", 0, true, schemaType);
+			}
+
+			String ref = dependency.getRef();
+			if (ref != null && bomrefIdMap.containsKey(ref)) {
+				String newRef = bomrefIdMap.get(ref);
+				Dependency newDep = new Dependency(newRef);
+				newDep.setDependencies(dependency.getDependencies());
+				dependencies.set(i, newDep);
+				String refPath = isDependsOn ? depPath : depPath + ".ref";
+				changeLogsList = addChangeLog(changeLogsList, getNewValueForChangeLog(newRef, ref), fileName, refPath, Constants.REPLACE, schemaType);
+			}
+		}
+	}
+
+	private static void remapCompositionRefs(List<Composition> compositions,
+			Map<String, String> bomrefIdMap, List<ChangeLog> changeLogsList, String fileName, int startIdx, String schemaType) {
+		for (int c = 0; c < compositions.size(); c++) {
+			Composition composition = compositions.get(c);
+			String compPath = "$.compositions[" + (startIdx + c) + "]";
+
 			if (composition.getAssemblies() != null) {
 				for (int i = 0; i < composition.getAssemblies().size(); i++) {
-					String bomRefString = getCompBomRef(bomRefNamespace,
-							composition.getAssemblies().get(i).toString());
-					BomReference bomRef = new BomReference(
-							getCompBomRef(bomRefNamespace, composition.getAssemblies().get(i).toString()));
-					composition.getAssemblies().set(i, bomRef);
-					changeLogsList = addChangeLog(changeLogsList, bomRefString, fileName, null, Constants.ADD, Constants.CYCLONEDX_LC);
+					String ref = composition.getAssemblies().get(i).getRef();
+					if (ref != null && bomrefIdMap.containsKey(ref)) {
+						String newRef = bomrefIdMap.get(ref);
+						composition.getAssemblies().set(i, new BomReference(newRef));
+						changeLogsList = addChangeLog(changeLogsList, getNewValueForChangeLog(newRef, ref), fileName, compPath + ".assemblies[" + i + "]", Constants.REPLACE, schemaType);
+					}
 				}
 			}
 
 			if (composition.getDependencies() != null) {
 				for (int i = 0; i < composition.getDependencies().size(); i++) {
-					String bomRefString = getCompBomRef(bomRefNamespace,
-							composition.getDependencies().get(i).toString());
-					BomReference bomRef = new BomReference(bomRefString);
-					composition.getDependencies().set(i, bomRef);
-					changeLogsList = addChangeLog(changeLogsList, bomRefString, fileName, null, Constants.ADD, Constants.CYCLONEDX_LC);
+					String ref = composition.getDependencies().get(i).getRef();
+					if (ref != null && bomrefIdMap.containsKey(ref)) {
+						String newRef = bomrefIdMap.get(ref);
+						composition.getDependencies().set(i, new BomReference(newRef));
+						changeLogsList = addChangeLog(changeLogsList, getNewValueForChangeLog(newRef, ref), fileName, compPath + ".dependencies[" + i + "]", Constants.REPLACE, schemaType);
+					}
 				}
 			}
 		}
-		return changeLogsList;
 	}
+	
+	// ---- CycloneDX 1.6 helper methods ----
+
+	/**
+	 * Dedup annotation bom-refs and remap annotation subjects (BomReference list)
+	 * using the bomrefIdMap.
+	 */
+	private static void deduplicateAnnotationBomRefs(List<Annotation> annotations,
+			Set<String> bomrefIdSet, Map<String, String> bomrefIdMap,
+			List<ChangeLog> changeLogsList, String fileName, int startIdx) {
+		for (int i = 0; i < annotations.size(); i++) {
+			Annotation annotation = annotations.get(i);
+			String annotPath = "$.annotations[" + (startIdx + i) + "]";
+
+			// dedup annotation bom-ref
+			String bomRef = annotation.getBomRef();
+			if (bomRef != null) {
+				if (!bomrefIdSet.contains(bomRef)) {
+					bomrefIdSet.add(bomRef);
+				} else {
+					String newBomRef = bomRef + "@" + UUID.randomUUID();
+					bomrefIdMap.put(bomRef, newBomRef);
+					bomrefIdSet.add(newBomRef);
+					annotation.setBomRef(newBomRef);
+					changeLogsList = addChangeLog(changeLogsList,
+							getNewValueForChangeLog(newBomRef, bomRef),
+							fileName, annotPath + ".bom-ref", Constants.REPLACE, Constants.CDQ_CYDX1_6_LC);
+				}
+			}
+
+			// remap subjects (list of BomReference) using bomrefIdMap
+			if (annotation.getSubjects() != null) {
+				for (int j = 0; j < annotation.getSubjects().size(); j++) {
+					String ref = annotation.getSubjects().get(j).getRef();
+					if (ref != null && bomrefIdMap.containsKey(ref)) {
+						String newRef = bomrefIdMap.get(ref);
+						annotation.getSubjects().set(j, new BomReference(newRef));
+						changeLogsList = addChangeLog(changeLogsList,
+								getNewValueForChangeLog(newRef, ref),
+								fileName, annotPath + ".subjects[" + j + "]", Constants.REPLACE, Constants.CDQ_CYDX1_6_LC);
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Dedup formula bom-refs and traverse inner components/services for bom-ref dedup.
+	 */
+	private static void deduplicateFormulaBomRefs(List<Formula> formulas,
+			Set<String> bomrefIdSet, Map<String, String> bomrefIdMap,
+			List<ChangeLog> changeLogsList, String fileName, int startIdx) {
+		for (int i = 0; i < formulas.size(); i++) {
+			Formula formula = formulas.get(i);
+			String formulaPath = "$.formulation[" + (startIdx + i) + "]";
+
+			// dedup formula bom-ref
+			String bomRef = formula.getBomRef();
+			if (bomRef != null) {
+				if (!bomrefIdSet.contains(bomRef)) {
+					bomrefIdSet.add(bomRef);
+				} else {
+					String newBomRef = bomRef + "@" + UUID.randomUUID();
+					bomrefIdMap.put(bomRef, newBomRef);
+					bomrefIdSet.add(newBomRef);
+					formula.setBomRef(newBomRef);
+					changeLogsList = addChangeLog(changeLogsList,
+							getNewValueForChangeLog(newBomRef, bomRef),
+							fileName, formulaPath + ".bom-ref", Constants.REPLACE, Constants.CDQ_CYDX1_6_LC);
+				}
+			}
+
+			// dedup inner components
+			if (formula.getComponents() != null) {
+				for (int j = 0; j < formula.getComponents().size(); j++) {
+					deduplicateCompBomRefs(formula.getComponents().get(j), changeLogsList, fileName,
+							bomrefIdSet, bomrefIdMap, formulaPath + ".components[" + j + "]", Constants.CDQ_CYDX1_6_LC);
+				}
+			}
+
+			// dedup inner services
+			if (formula.getServices() != null) {
+				deduplicateServiceBomRefs(formula.getServices(), bomrefIdSet, bomrefIdMap, changeLogsList,
+						fileName, 0, formulaPath + ".services", Constants.CDQ_CYDX1_6_LC);
+			}
+		}
+	}
+
+	/**
+	 * Merge declarations from multiple BOMs. Assessor and claim bom-refs are deduped.
+	 * Target components/services are merged with existing dedup sets.
+	 */
+	private static Declarations mergeDeclarations(Declarations merged, Declarations incoming,
+			Set<String> bomrefIdSet, Map<String, String> bomrefIdMap,
+			List<ChangeLog> changeLogsList, String fileName) {
+		if (merged == null) {
+			merged = new Declarations();
+		}
+
+		// assessors (bom-ref dedup)
+		if (incoming.getAssessors() != null) {
+			if (merged.getAssessors() == null) {
+				merged.setAssessors(new ArrayList<>());
+			}
+			for (int i = 0; i < incoming.getAssessors().size(); i++) {
+				Assessor assessor = incoming.getAssessors().get(i);
+				int mergedIdx = merged.getAssessors().size();
+				String assessorPath = "$.declarations.assessors[" + mergedIdx + "]";
+				String bomRef = assessor.getBomRef();
+				if (bomRef != null) {
+					if (!bomrefIdSet.contains(bomRef)) {
+						bomrefIdSet.add(bomRef);
+					} else {
+						String newBomRef = bomRef + "@" + UUID.randomUUID();
+						bomrefIdMap.put(bomRef, newBomRef);
+						bomrefIdSet.add(newBomRef);
+						assessor.setBomRef(newBomRef);
+						changeLogsList = addChangeLog(changeLogsList,
+								getNewValueForChangeLog(newBomRef, bomRef),
+								fileName, assessorPath + ".bom-ref", Constants.REPLACE, Constants.CDQ_CYDX1_6_LC);
+					}
+				}
+				merged.getAssessors().add(assessor);
+			}
+		}
+
+		// claims (bom-ref dedup + target ref remap)
+		if (incoming.getClaims() != null) {
+			if (merged.getClaims() == null) {
+				merged.setClaims(new ArrayList<>());
+			}
+			for (int i = 0; i < incoming.getClaims().size(); i++) {
+				Claim claim = incoming.getClaims().get(i);
+				int mergedIdx = merged.getClaims().size();
+				String claimPath = "$.declarations.claims[" + mergedIdx + "]";
+				String bomRef = claim.getBomRef();
+				if (bomRef != null) {
+					if (!bomrefIdSet.contains(bomRef)) {
+						bomrefIdSet.add(bomRef);
+					} else {
+						String newBomRef = bomRef + "@" + UUID.randomUUID();
+						bomrefIdMap.put(bomRef, newBomRef);
+						bomrefIdSet.add(newBomRef);
+						claim.setBomRef(newBomRef);
+						changeLogsList = addChangeLog(changeLogsList,
+								getNewValueForChangeLog(newBomRef, bomRef),
+								fileName, claimPath + ".bom-ref", Constants.REPLACE, Constants.CDQ_CYDX1_6_LC);
+					}
+				}
+				// remap target ref if it was remapped
+				if (claim.getTarget() != null && bomrefIdMap.containsKey(claim.getTarget())) {
+					String oldTarget = claim.getTarget();
+					String newTarget = bomrefIdMap.get(oldTarget);
+					claim.setTarget(newTarget);
+					changeLogsList = addChangeLog(changeLogsList,
+							getNewValueForChangeLog(newTarget, oldTarget),
+							fileName, claimPath + ".target", Constants.REPLACE, Constants.CDQ_CYDX1_6_LC);
+				}
+				merged.getClaims().add(claim);
+			}
+		}
+
+		// attestations (pass-through, no bom-ref)
+		if (incoming.getAttestations() != null) {
+			if (merged.getAttestations() == null) {
+				merged.setAttestations(new ArrayList<>());
+			}
+			merged.getAttestations().addAll(incoming.getAttestations());
+		}
+
+		// evidence (pass-through)
+		if (incoming.getEvidence() != null) {
+			if (merged.getEvidence() == null) {
+				merged.setEvidence(new ArrayList<>());
+			}
+			merged.getEvidence().addAll(incoming.getEvidence());
+		}
+
+		// targets: merge components/services (dedup via existing sets)
+		if (incoming.getTargets() != null) {
+			Targets incomingTargets = incoming.getTargets();
+			Targets mergedTargets = merged.getTargets();
+			if (mergedTargets == null) {
+				mergedTargets = new Targets();
+				merged.setTargets(mergedTargets);
+			}
+			if (incomingTargets.getComponents() != null) {
+				if (mergedTargets.getComponents() == null) {
+					mergedTargets.setComponents(new ArrayList<>());
+				}
+				for (Component comp : incomingTargets.getComponents()) {
+					int idx = mergedTargets.getComponents().size();
+					deduplicateCompBomRefs(comp, changeLogsList, fileName, bomrefIdSet, bomrefIdMap,
+							"$.declarations.targets.components[" + idx + "]", Constants.CDQ_CYDX1_6_LC);
+					mergedTargets.getComponents().add(comp);
+				}
+			}
+			if (incomingTargets.getServices() != null) {
+				if (mergedTargets.getServices() == null) {
+					mergedTargets.setServices(new ArrayList<>());
+				}
+				int svcStartIdx = mergedTargets.getServices().size();
+				deduplicateServiceBomRefs(incomingTargets.getServices(), bomrefIdSet, bomrefIdMap,
+						changeLogsList, fileName, svcStartIdx, "$.declarations.targets.services", Constants.CDQ_CYDX1_6_LC);
+				mergedTargets.getServices().addAll(incomingTargets.getServices());
+			}
+		}
+
+		// affirmation: take latest (last one wins)
+		if (incoming.getAffirmation() != null) {
+			merged.setAffirmation(incoming.getAffirmation());
+		}
+
+		// signature: clear since we're merging from multiple sources
+		merged.setSignature(null);
+
+		return merged;
+	}
+
+	/**
+	 * Merge definitions (standards) from multiple BOMs with bom-ref dedup.
+	 */
+	private static Definition mergeDefinitions(Definition merged, Definition incoming,
+			Set<String> bomrefIdSet, Map<String, String> bomrefIdMap,
+			List<ChangeLog> changeLogsList, String fileName) {
+		if (merged == null) {
+			merged = new Definition();
+		}
+		if (incoming.getStandards() != null) {
+			if (merged.getStandards() == null) {
+				merged.setStandards(new ArrayList<>());
+			}
+			for (int i = 0; i < incoming.getStandards().size(); i++) {
+				Standard standard = incoming.getStandards().get(i);
+				int mergedIdx = merged.getStandards().size();
+				String stdPath = "$.definitions.standards[" + mergedIdx + "]";
+				String bomRef = standard.getBomRef();
+				if (bomRef != null) {
+					if (!bomrefIdSet.contains(bomRef)) {
+						bomrefIdSet.add(bomRef);
+					} else {
+						String newBomRef = bomRef + "@" + UUID.randomUUID();
+						bomrefIdMap.put(bomRef, newBomRef);
+						bomrefIdSet.add(newBomRef);
+						standard.setBomRef(newBomRef);
+						changeLogsList = addChangeLog(changeLogsList,
+								getNewValueForChangeLog(newBomRef, bomRef),
+								fileName, stdPath + ".bom-ref", Constants.REPLACE, Constants.CDQ_CYDX1_6_LC);
+					}
+				}
+				merged.getStandards().add(standard);
+			}
+		}
+		return merged;
+	}
+
+	/**
+	 * Workaround for cyclonedx-core-java library bug where TaskType.LINT enum
+	 * is uppercase but the CycloneDX 1.6 schema defines "lint" (lowercase).
+	 * Pre-processes JSON bytes to normalize taskTypes values before parsing.
+	 */
 	
 	/**
 	 * mergeSPDXBoms Method perform the merge operations of the Input SPDX BOM List
@@ -688,7 +1344,9 @@ public class SbomMergeUtil {
 			String path, String operation, String schemaType) {
 
 		if ((schemaType.equalsIgnoreCase(Constants.CYCLONEDX_LC) && !StringUtils.isEmpty(newValue))
-				|| schemaType.equalsIgnoreCase(Constants.SPDX)) {
+				|| (schemaType.equalsIgnoreCase(Constants.CDQ_CYDX1_6_LC) && !StringUtils.isEmpty(newValue))
+				|| schemaType.equalsIgnoreCase(Constants.SPDX)
+				|| schemaType.equalsIgnoreCase(Constants.CDQ_SPDX2_3_LC)) {
 			ChangeLog changeLog = new ChangeLog();
 			changeLog.setOp(operation);
 			changeLog.setValue(newValue);

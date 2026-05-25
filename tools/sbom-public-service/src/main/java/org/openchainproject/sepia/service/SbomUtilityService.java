@@ -96,5 +96,11 @@ public interface SbomUtilityService {
 	 */
 	BomFilesInputModel prepareForDownload(String currentValue, BomFilesInputModel bomFilesInputModel) throws NoSuchAlgorithmException;
 
+	/**
+	 * Writes the response JSON to a log file in the upload directory.
+	 * File is named as: &lt;uploadedFileName&gt;_log.txt
+	 * @param sbomInputModel the response model to write
+	 */
+	void writeResponseLog(BomFilesInputModel sbomInputModel);
  
 }
