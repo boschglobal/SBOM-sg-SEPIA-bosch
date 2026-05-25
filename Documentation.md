@@ -50,16 +50,13 @@ Any changes made by the user can be viewed in the **ChangeLog** tab.
 ```bash
 curl --noproxy localhost \
      --location "API_PATH" \
-     --form "postData={\"schemaType\":\"SELECT_SchemaType\",\"sessionId\":\"USER_NTID\"}" \
+     --form "postData={\"schemaType\":\"SELECT_SchemaType\",\"sessionId\":\"USERID\"}" \
      --form "file=@SBOM_File_Path"
 ```
 
 #### Parameters
 
 - **`API_PATH`** – Backend service hosted location.
-  Example:
-  - `https://fe0vmc2863.de.bosch.com:9053/uploadAndValidate`
-  - `http://localhost:9053/uploadAndValidate`
 
 - **`SELECT_SchemaType`** – Indicates the uploaded file schema type:
 
@@ -240,9 +237,9 @@ customValidate C:\test-data\A1bom.json C:\test-data\schema.json -o C:\test-data\
 ```
 ---
 
-# CDQ 0302 Schema description
+# CDQ Schema description
  
- This table refers the mandatory parameters from CycloneDX 1.6 and SPDX 2.3 as per the CDQ 0302 requirements.
+ This table refers the mandatory parameters from CycloneDX 1.6 and SPDX 2.3 as per the CDQ Schema.
 
 
 <table border="1" class="dataframe">
