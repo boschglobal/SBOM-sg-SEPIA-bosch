@@ -11,7 +11,7 @@ This guide will help you set up both the SBOM Public UI (frontend) and the SbomP
 
 Before you begin, ensure you have the following installed on your system:
 
-- **Java 1.8**
+- **Java 17**
 - **Apache Maven 3.8.6**
 - **Spring Boot 2.3.8**
 - **Eclipse IDE** (or any preferred Java IDE)
