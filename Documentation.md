@@ -167,7 +167,199 @@ The user provides input component data. The user-input package SPDX ID establish
 The user-input package SPDX ID establishes the `contains` relationship between each package in the input files.
 
 ![alt text](images/spdx_realtionship.png)
+---
 
+### 2. Merge SBOM Files via `curl`
+
+```bash
+curl --noproxy localhost \
+     --location "API_PATH" \
+     --form "postData={\"schemaType\":\"SELECT_SchemaType\",\"sessionId\":\"USERID\"}" \
+     --form "file=@SBOM_File_Path" --form "manifestFile=@ManifestFile_Path"
+```
+
+#### Parameters
+
+- **`API_PATH`** – Backend service hosted location (http://localhost:9053/validateAndMerge).
+
+- **`SELECT_SchemaType`** – Indicates the uploaded file schema type:
+
+  | Value | Schema |
+  |---|---|
+  | `cdqcydx` | CDQ CycloneDX v1.6 |
+  | `cyclonedx` | CycloneDX v1.4 |
+  | `spdx` | SPDX v2.3 |
+  | `cdqspdx2.3` | CDQ SPDX v2.3 |
+
+- **`USERID`** – User session identifier.
+
+- **`SBOM_File_Path`** – Path to the SBOM files to be merged.
+
+- **`ManifestFile_Path`** – Path to the SBOM Manifest file(Information of merged SBOM metadata).
+
+# ManifestFile Documentation
+
+| # | Schema Type   | Reference File        |
+|---|---------------|-----------------------|
+| 1 | cdqcydx       | CycloneDX1.6.json     |
+| 2 | cyclonedx     | CycloneDX1.4.json     |
+| 3 | spdx          | Spdx2.3.json          |
+| 4 | cdqspdx2.3    | CDQ_Spdx2.3.json      |
+
+---
+
+## Sample JSON Content
+
+### 1. cdqcydx (CycloneDX1.6.json)
+
+```json
+{
+  "metadata": {
+    "authors": [
+      {
+        "name": "author"
+      }
+    ],
+    "manufacturer": {
+      "name": "manufaturer"
+    },
+    "component": {
+      "licenses": [
+        {
+          "license": {
+            "id": "0BSD"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "other",
+          "url": "url"
+        }
+      ],
+      "name": "component",
+      "group": "Apps",
+      "type": "cryptographic-asset",
+      "version": "v32",
+      "purl": "purl"
+    },
+    "supplier": {
+      "contact": [
+        {
+          "email": "test@example.com"
+        }
+      ],
+      "name": "supplier"
+    }
+  }
+}
+```
+
+---
+
+### 2. cyclonedx (CycloneDX1.4.json)
+
+```json
+{
+  "metadata": {
+    "component": {
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "name": "Merge_test",
+      "group": "acme.apps",
+      "type": "container",
+      "version": "v32"
+    },
+    "supplier": {
+      "contact": [
+        {
+          "email": "supplier@test.com"
+        }
+      ],
+      "name": "supplier"
+    }
+  }
+}
+```
+
+---
+
+### 3. spdx (Spdx2.3.json)
+
+```json
+{
+  "creationInfo": {
+    "creators": [
+      "Tool: BOM Validator",
+      "Organization:Organization_name",
+      "Person:Person_name"
+    ]
+  },
+  "packages": [
+    {
+      "externalRefs": [
+        {
+          "comment": "NOASSERTION",
+          "referenceCategory": "OTHER",
+          "referenceLocator": "NOASSERTION",
+          "referenceType": "NOASSERTION"
+        }
+      ],
+      "name": "zlib",
+      "versionInfo": "v1.4.3",
+      "primaryPackagePurpose": "SOURCE",
+      "licenseDeclared": "MIT",
+      "copyrightText": "NOASSERTION"
+    }
+  ]
+}
+```
+
+---
+
+### 4. cdqspdx2.3 (CDQ_Spdx2.3.json)
+
+```json
+{
+  "creationInfo": {
+    "creators": [
+      "Tool: BOM Validator",
+      "Organization:Test_Organization",
+      "Person:Test"
+    ]
+  },
+  "packages": [
+    {
+      "externalRefs": [
+        {
+          "referenceCategory": "OTHER"
+        }
+      ],
+      "name": "zlib",
+      "versionInfo": "v2.3.4",
+      "primaryPackagePurpose": "APPLICATION",
+      "licenseConcluded": "MIT"
+    }
+  ]
+}
+```
+---
+
+#### Example
+```bash
+curl --noproxy localhost \
+     --location "http://localhost:9053/validateAndMerge\" \
+     --form "postData={\"schemaType\":\"cdqcydx",\"sessionId\":\"TEE123\"}" \
+     --form "file=@C:\Users\CDQ0302\CYDX-1.6\CycloneDX-Valid-1.json,C:\Users\CDQ0302\CYDX-1.6\CycloneDX-Valid-2.json,C:\Users\CDQ0302\CYDX-1.6\CycloneDX-Valid-3.json"
+     --form "manifestFile=@C:\Users\CDQ0302\Manifest_Files\CycloneDX1.6.json"
+```
+
+---
 ### 2. Upload & Validate SBOM File via `PowerShell Command`
 
 The user can download the sbom-tools.ps1(Powershell script) file from the repositories.
@@ -233,6 +425,79 @@ customValidate C:\test-data\A1bom.json C:\test-data\schema.json
 #### Example for generating log details in to a file
 ```bash
 customValidate C:\test-data\A1bom.json C:\test-data\schema.json -o C:\test-data\response.txt
+```
+---
+
+## Running the Application with Docker
+
+The application is packaged as two Docker services: a backend API and a public UI. Both services are defined in `compose.yaml` and can be started together using Docker Compose.
+
+### Services
+
+| Service           | Image                          | Host Port | Container Port | Description                |
+|-------------------|--------------------------------|-----------|----------------|----------------------------|
+| sbom-backend      | mmq1cob737/sbom-backend        | 9053      | 9053           | Backend API service        |
+| sbom-public-ui    | mmq1cob737/sbom-public-ui      | 8080      | 80             | Public-facing web UI       |
+
+### compose.yaml
+
+```yaml
+services:
+  sbom-backend:
+    image: mmq1cob737/sbom-backend
+    ports:
+      - "9053:9053"   # Adjust as needed
+
+  sbom-public-ui:
+    image: mmq1cob737/sbom-public-ui
+    ports:
+      - "8080:80"   # Adjust as needed
+```
+
+### Prerequisites
+
+- Docker Engine installed and running
+- Docker Compose v2 (`docker compose` CLI)
+
+### Steps to Run
+
+1. Navigate to the directory containing `compose.yaml`:
+
+   ```bash
+   cd C:\Users\Docker
+   ```
+
+2. Pull the latest images:
+
+   ```bash
+   docker compose pull
+   ```
+
+3. Start the services in detached mode:
+
+   ```bash
+   docker compose up -d
+   ```
+
+4. Verify the running containers:
+
+   ```bash
+   docker compose ps
+   ```
+
+### Access URLs
+
+| Component        | URL                       |
+|------------------|---------------------------|
+| Public UI        | http://localhost:8080/sbom-utils-ui/#/     |
+| Backend API      | http://localhost:9053     |
+
+### Stopping the Application
+
+To stop and remove the containers:
+
+```bash
+docker compose down
 ```
 ---
 
