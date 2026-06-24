@@ -514,11 +514,9 @@ docker compose down
       <th>CycloneDX 1.6</th>
       <th>Description</th>
       <th>Remarks</th>
-      <th>Topic team feedback</th>
       <th>SPDX 2.3</th>
       <th>Description</th>
       <th>Remarks</th>
-      <th>Topic team feedback</th>
       <th></th>
     </tr>
   </thead>
@@ -527,13 +525,11 @@ docker compose down
       <td>1.0</td>
       <td>The software itself(Meta data)</td>
       <td>metadata.component.name</td>
-      <td>The name of the component. \nThis will often be a shortened, single name of the component.</td>
-      <td></td>
+      <td>The name of the component. This will often be a shortened, single name of the component.</td>
       <td></td>
       <td>Package:name</td>
       <td>Identify name of this SpdxElement.</td>
       <td></td>
-      <td>That feeld must be: Package:name:\n\nAnd that package must have a DESCRIBES relation from the SBOM itself.</td>
       <td></td>
     </tr>
     <tr>
@@ -544,9 +540,7 @@ docker compose down
       <td></td>
       <td></td>
       <td></td>
-      <td></td>
       <td>In SPDX no equalent parameter available for mapping metadata.component.group</td>
-      <td></td>
       <td></td>
     </tr>
     <tr>
@@ -555,11 +549,9 @@ docker compose down
       <td>metadata.component.type</td>
       <td>Specifies the type of component.</td>
       <td></td>
-      <td></td>
       <td>packages.PrimaryPackagePurpose</td>
       <td>This field provides information about the primary purpose of the identified package.</td>
       <td>As per RFC-0054-02</td>
-      <td>BBM PC requires this</td>
       <td></td>
     </tr>
     <tr>
@@ -568,24 +560,20 @@ docker compose down
       <td>metadata.component.version</td>
       <td>The component version.</td>
       <td></td>
-      <td></td>
       <td>packages.versionInfo</td>
       <td>Identify the version of the package.</td>
       <td></td>
-      <td>dito</td>
       <td></td>
     </tr>
     <tr>
       <td></td>
       <td></td>
-      <td>metadata.component.licenses.license.id\n                             or\nmetadata.component.licenses.license.name\n                             or\nmetadata.component.licenses.license.Expression</td>
-      <td>A valid SPDX license identifier\n                   or\nThe name of the license.\n                    or\nA valid SPDX license expression.\n</td>
-      <td></td>
+      <td>metadata.component.licenses.license.id                             or metadata.component.licenses.license.name                             or metadata.component.licenses.license.Expression</td>
+      <td>A valid SPDX license identifier                   or The name of the license.                    or A valid SPDX license expression.</td>
       <td></td>
       <td>packages.LicenseConcluded</td>
       <td>List the licenses that have been declared by the authors of the package.</td>
       <td></td>
-      <td>It shall be used PackageLicenseConcluded: instead of declared license, \nbecause an SBOM shows the used licenses. So in case of OR license relation it must provide the used license. \n\nCSI considers Declared licenses as mandatory, we need to collaborate to have a common understanding</td>
       <td></td>
     </tr>
     <tr>
@@ -594,29 +582,23 @@ docker compose down
       <td>metadata.supplier.name</td>
       <td>The organization that supplied the component that the BOM describes. The supplier may often be the manufacturer, but may also be a distributor or repackager.</td>
       <td></td>
-      <td></td>
       <td>CreationInfo:Creator: Organization:</td>
       <td>Name of the organization that generated and provides this SBOM.</td>
       <td>As per RFC-0054-02</td>
-      <td></td>
       <td></td>
     </tr>
     <tr>
       <td></td>
       <td></td>
       <td>metadata.supplier.contact.email</td>
-      <td>The email address of the contact.\n</td>
-      <td></td>
+      <td>The email address of the contact.</td>
       <td></td>
       <td>CreationInfo:Creator: Person:</td>
       <td></td>
       <td>As per RFC-0054-02</td>
       <td></td>
-      <td></td>
     </tr>
     <tr>
-      <td></td>
-      <td></td>
       <td></td>
       <td></td>
       <td></td>
@@ -633,16 +615,12 @@ docker compose down
       <td>metadata.component.purl</td>
       <td>Asserts the identity of the component using package-url (purl).</td>
       <td>Generate the PURL based on user input and also provide option to Edit</td>
-      <td></td>
       <td>packages.externalRefs.referenceCategory</td>
       <td>Category for the external reference</td>
-      <td>As per RFC-0054-02 -\nPackage:externalRef: PACKAGE-MANAGER purl {purl value}\n\n"We expect the global purl"</td>
-      <td>BBM PC requires CSI conformity "PACKAGE-MANAGER"</td>
+      <td>As per RFC-0054-02 -Package:externalRef: PACKAGE-MANAGER purl {purl value}"We expect the global purl"</td>
       <td></td>
     </tr>
     <tr>
-      <td></td>
-      <td></td>
       <td></td>
       <td></td>
       <td></td>
@@ -663,8 +641,6 @@ docker compose down
       <td></td>
       <td></td>
       <td></td>
-      <td>BBM PC requires CSI conformity Bosch PURL - To check with CSI</td>
-      <td></td>
     </tr>
     <tr>
       <td></td>
@@ -672,11 +648,9 @@ docker compose down
       <td>metadata.licenses.license.id</td>
       <td>Specifies the details and attributes related to a software license.</td>
       <td>User Input - (E.g - CC-BY-4.0)</td>
-      <td>We can have this as the default license for the SBOM document</td>
       <td>dataLicense</td>
       <td>License expression for dataLicense.</td>
-      <td>(Default - CC-BY-4.0)\nDatalicense field is mapped to either license id or license name in CycloneDX</td>
-      <td>Mapping changed as per the requirement</td>
+      <td>(Default - CC-BY-4.0) Datalicense field is mapped to either license id or license name in CycloneDX</td>
       <td></td>
     </tr>
     <tr>
@@ -685,8 +659,6 @@ docker compose down
       <td>metadata.licenses.license.name</td>
       <td></td>
       <td>Default - blank string</td>
-      <td>Check if CC-BY-4.0 mandates to publish license text</td>
-      <td></td>
       <td></td>
       <td></td>
       <td></td>
@@ -696,11 +668,9 @@ docker compose down
       <td></td>
       <td></td>
       <td>metadata.authors</td>
-      <td>The person(s) who created the BOM.\nAuthors are common in BOMs created through manual processes.</td>
-      <td></td>
+      <td>The person(s) who created the BOM. Authors are common in BOMs created through manual processes.</td>
       <td></td>
       <td>CreationInfo:creators:Person</td>
-      <td></td>
       <td></td>
       <td></td>
       <td></td>
@@ -711,23 +681,19 @@ docker compose down
       <td>metadata.tools.components.name</td>
       <td></td>
       <td></td>
-      <td></td>
       <td>CreationInfo:creators:Tool</td>
       <td>Identify who (or what, in the case of a tool) created the SPDX document.</td>
       <td></td>
-      <td>Add the version of "SBOM Validator" tool. Map the equivalent CycloneDX</td>
       <td></td>
     </tr>
     <tr>
       <td></td>
       <td></td>
-      <td>\nmetadata.manufacturer</td>
+      <td>metadata.manufacturer</td>
       <td>BOMs created through automated means may have @.manufacturer instead.</td>
       <td></td>
-      <td></td>
-      <td>\nCreationInfo:creators:Organization\n\n</td>
+      <td>CreationInfo:creators:Organization</td>
       <td>Identify who (or what, in the case of a tool) created the SPDX document.</td>
-      <td></td>
       <td></td>
       <td></td>
     </tr>
@@ -737,11 +703,9 @@ docker compose down
       <td>metadata.timestamp</td>
       <td>The date and time (timestamp) when the BOM was created.</td>
       <td>User Input</td>
-      <td></td>
       <td>CreationInfo.created</td>
       <td>Identify when the SPDX document was originally created.</td>
       <td>User Input</td>
-      <td>Mapping changed as per the requirement</td>
       <td></td>
     </tr>
     <tr>
@@ -750,16 +714,12 @@ docker compose down
       <td>Serialnumber</td>
       <td></td>
       <td>Every BOM generated SHOULD have a unique serial number, even if the contents of the BOM have not changed over time. If specified, the serial number must conform to RFC 4122. Use of serial numbers is recommended.</td>
-      <td></td>
       <td>documentNamespace</td>
       <td>The URI provides an unambiguous mechanism for other SPDX documents to reference SPDX elements within this SPDX document.</td>
       <td></td>
       <td></td>
-      <td></td>
     </tr>
     <tr>
-      <td></td>
-      <td></td>
       <td></td>
       <td></td>
       <td></td>
@@ -776,11 +736,9 @@ docker compose down
       <td>components.name</td>
       <td>The name of the component.</td>
       <td>1).Is this accurate or any additional/removal is required</td>
-      <td></td>
       <td>packages.name</td>
       <td>Identify the full name of the package as given by the Package Originator</td>
-      <td>1).Is this accurate or any additional/removal is required\n2). How CPE or PURL information can be added into ExternalRef?\n</td>
-      <td></td>
+      <td>1).Is this accurate or any additional/removal is required 2). How CPE or PURL information can be added into ExternalRef?</td>
       <td></td>
     </tr>
     <tr>
@@ -789,10 +747,8 @@ docker compose down
       <td>components.version</td>
       <td>The component version.</td>
       <td></td>
-      <td></td>
       <td>packages.versionInfo</td>
       <td>Identify the version of the package.</td>
-      <td></td>
       <td></td>
       <td></td>
     </tr>
@@ -800,13 +756,11 @@ docker compose down
       <td></td>
       <td></td>
       <td>component.cpe</td>
-      <td>Specifies a well-formed CPE name that \nconforms to the CPE 2.2 or 2.3 specification.</td>
-      <td></td>
+      <td>Specifies a well-formed CPE name that conforms to the CPE 2.2 or 2.3 specification.</td>
       <td></td>
       <td>packages.externalRefs.referenceCategory</td>
       <td>ExternalRef: SECURITY cpe23Type cpe:2.3:a:pivotal_software:spring_framework:4.1.0:*:*:*:*:*:*:*</td>
       <td>As per SPDX Standard</td>
-      <td></td>
       <td></td>
     </tr>
     <tr>
@@ -815,11 +769,9 @@ docker compose down
       <td>components.purl</td>
       <td>Component Package URL (purl)</td>
       <td></td>
-      <td></td>
       <td>packages.externalRefs.referenceCategory</td>
       <td>Category for the external reference</td>
-      <td>As per RFC-0054-02 -\nPackage:externalRef: PACKAGE-MANAGER purl {purl value}\n\n</td>
-      <td>ExternalRef: PACKAGE-MANAGER purl pkg:docker/debian@sha256:2f04d3d33b6027bb74ecc81397abe780649ec89f1a2af18d7022737d0482cefe\n</td>
+      <td>As per RFC-0054-02 -Package:externalRef: PACKAGE-MANAGER purl {purl value}</td>
       <td></td>
     </tr>
     <tr>
@@ -830,35 +782,29 @@ docker compose down
       <td>Optional</td>
       <td></td>
       <td></td>
-      <td></td>
       <td>In SPDX no equalent parameter available for mapping metadata.components.supplier.bom-ref</td>
-      <td></td>
       <td></td>
     </tr>
     <tr>
       <td></td>
       <td></td>
       <td>metadata.components.supplier.name</td>
-      <td>The name of the organization\n</td>
+      <td>The name of the organization</td>
       <td>Optional</td>
-      <td></td>
       <td>Package.Supplier</td>
       <td>\tThe name and, optionally, contact information of the person or organization who was the immediate supplier of this package to the recipient.</td>
       <td>Optional</td>
-      <td>It is optional because in most cases not available.\nBBM PC wants to see this in the SBOM e.g., PS-SC for internal or an external organization</td>
       <td></td>
     </tr>
     <tr>
       <td></td>
       <td></td>
       <td>metadata.components.supplier.address</td>
-      <td>The physical address (location) of the organization\n</td>
+      <td>The physical address (location) of the organization</td>
       <td>Optional</td>
       <td></td>
       <td></td>
-      <td></td>
       <td>In SPDX no equalent parameter available for mapping metadata.components.supplier.address</td>
-      <td></td>
       <td></td>
     </tr>
     <tr>
@@ -869,9 +815,7 @@ docker compose down
       <td>Optional</td>
       <td></td>
       <td></td>
-      <td></td>
       <td>In SPDX no equalent parameter available for mapping metadata.components.supplier.url</td>
-      <td></td>
       <td></td>
     </tr>
     <tr>
@@ -882,14 +826,10 @@ docker compose down
       <td>Optional</td>
       <td></td>
       <td></td>
-      <td></td>
       <td>In SPDX no equalent parameter available for mapping metadata.components.supplier.contact</td>
-      <td></td>
       <td></td>
     </tr>
     <tr>
-      <td></td>
-      <td></td>
       <td></td>
       <td></td>
       <td></td>
@@ -903,32 +843,26 @@ docker compose down
     <tr>
       <td>3.0</td>
       <td>Author of the SBOM (i.e., responsible organization)</td>
-      <td>metadata.authors (person in SPDX)\n</td>
-      <td>The person(s) who created the BOM.\nAuthors are common in BOMs created through manual processes. BOMs created through automated means may have @.manufacturer instead.</td>
+      <td>metadata.authors (person in SPDX)</td>
+      <td>The person(s) who created the BOM.Authors are common in BOMs created through manual processes. BOMs created through automated means may have @.manufacturer instead.</td>
       <td>1).Is this accurate or any additional/removal is required</td>
-      <td></td>
       <td>CreationInfo:creators:Person (if orgranization is absent)</td>
       <td>Identify who (or what, in the case of a tool) created the SPDX document.</td>
       <td>User Input</td>
-      <td></td>
       <td></td>
     </tr>
     <tr>
       <td></td>
       <td></td>
       <td>metadata.manufacturer</td>
-      <td>The organization that created the BOM.\nManufacturer is common in BOMs created through automated processes. BOMs created through manual means may have @.authors instead.</td>
+      <td>The organization that created the BOM.Manufacturer is common in BOMs created through automated processes. BOMs created through manual means may have @.authors instead.</td>
       <td>1).Is this accurate or any additional/removal is required</td>
-      <td></td>
       <td>CreationInfo:creators:Organization</td>
       <td></td>
       <td>Though CDQ 0302 mandates only Author information we decide to add manufacturer information, since authors can leave the organization</td>
-      <td>BBM PC: BOM Provider shall be the manufacturer "Robert Bosch GmbH".</td>
       <td></td>
     </tr>
     <tr>
-      <td></td>
-      <td></td>
       <td></td>
       <td></td>
       <td></td>
@@ -945,11 +879,9 @@ docker compose down
       <td>metadata.timestamp</td>
       <td>The date and time (timestamp) when the BOM was created</td>
       <td>Already covered in the SW itself part</td>
-      <td></td>
       <td>CreationInfo.created</td>
       <td>Identify when the SPDX document was originally created.</td>
       <td>Already covered in the SW itself part</td>
-      <td></td>
       <td></td>
     </tr>
   </tbody>
