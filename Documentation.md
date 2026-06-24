@@ -15,7 +15,7 @@
 
 ### 1. Upload SBOM File through the User Interface
 
-Users can upload an SBOM file in JSON format. Supported schema type versions are:
+Users can upload an SBOM file in JSON format. Supported schema type versions are:-
 
 - CycloneDX – v1.4
 - SPDX – v2.3
