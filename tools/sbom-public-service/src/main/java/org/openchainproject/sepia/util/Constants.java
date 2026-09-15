@@ -49,6 +49,8 @@ public class Constants {
 	
 	public static final String JSON_EXT = ".json";
 	
+	public static final String CREATED = "created";
+	public static final String COMMENT = "comment";
 	public static final String PACKAGES = "packages";
 	public static final String ANNOTATIONS = "annotations";
 	public static final String EXTERNALDOCUMENTREFS = "externalDocumentRefs";

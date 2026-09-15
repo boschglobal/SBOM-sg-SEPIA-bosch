@@ -42,9 +42,16 @@ import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.annotations.ApiOperation;
 import springfox.documentation.annotations.ApiIgnore;
+
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
+import javax.validation.ConstraintViolation;
+import java.util.Set;
 
 /**
  * 
@@ -538,7 +545,9 @@ public class SbomUtilityController {
 				   @RequestParam("postData") String postData) {
 
 			   BomFilesInputModel sbomInputModel = null;
+			   List<BomFilesInputModel> bomMergeResultList = new ArrayList<>();
 			   ObjectMapper mapper = new ObjectMapper();
+			   String manifestContent = null;
 			   try {
 				   sbomInputModel = mapper.readValue(postData, BomFilesInputModel.class);
 
@@ -561,7 +570,11 @@ public class SbomUtilityController {
 				   // 2) Validate all uploaded files are .json files
 				   if (!inputFile.isPresent() || inputFile.get().length == 0) {
 					   return buildUploadErrorResponse(mapper, sbomInputModel,
-							   "No files uploaded. At least one .json file is required.");
+							   "No files uploaded. At least two .json files are required for merge operation.");
+				   }
+				   if (inputFile.get().length < 2) {
+					   return buildUploadErrorResponse(mapper, sbomInputModel,
+							   "At least two .json files must be uploaded for merge operation.");
 				   }
 				   MultipartFile[] files = inputFile.get();
 				   for (int i = 0; i < files.length; i++) {
@@ -588,15 +601,94 @@ public class SbomUtilityController {
 								   "File '" + uploadedFileName + "' at index " + i + " failed schemaType validation: " + contentMismatch);
 					   }
 				   }
-				   // ----------------------------------------------------------------------
-
+				   
+				   // Validate manifestFile if present
+				   if (manifestFile.isPresent() && manifestFile.get().length > 0 && manifestFile.get()[0] != null) {
+					   MultipartFile mf = manifestFile.get()[0];
+					   String manifestFileName = mf.getOriginalFilename();
+					   if (manifestFileName == null || !manifestFileName.toLowerCase().endsWith(".json")) {
+						   return buildUploadErrorResponse(mapper, sbomInputModel,
+								   "Invalid manifestFile '" + manifestFileName + "'. Only .json files are accepted for upload.");
+					   }
+					   try {
+						   manifestContent = new String(mf.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
+					   } catch (Exception e) {
+						   return buildUploadErrorResponse(mapper, sbomInputModel,
+								   "Manifest file is not a valid JSON document: " + e.getMessage());
+					   }
+					   // Additional manifest validation for schemaType
+					   String manifestValidationError = validateManifestFileForSchemaType(manifestContent, schemaType,mf);
+					   if (manifestValidationError != null) {
+						   return buildUploadErrorResponse(mapper, sbomInputModel, manifestValidationError);
+					   }
+				   }
+				   
+				bomMergeResultList = sbomUtilityService.validateAndMergeFromAPI(inputFile, manifestContent, sbomInputModel);
+				   
 			   } catch (Exception e) {
 				   LOGGER.error("Exception occurred while the given information inside validateAndMerge()", e);
 				   return buildUploadErrorResponse(mapper, sbomInputModel,
 						   "Error processing uploaded file: " + e.getMessage());
 			   }
-			   ObjectNode responseNode = mapper.valueToTree(sbomInputModel);
-			   return responseNode;
+			   
+			   // Remove 'properties' from each result
+			   ArrayNode arrayNode = mapper.createArrayNode();
+			   boolean hasInvalid = false;
+			   for (BomFilesInputModel model : bomMergeResultList) {
+				   ObjectNode node = mapper.valueToTree(model);
+				   node.remove("sbomFile");
+				   node.remove("schemaJsonString");
+				   node.remove("sbomJsonString");
+				   node.remove("validatedAlready");
+				   node.remove("schema");
+				   node.remove("filePath");
+				   arrayNode.add(node);
+				   // Check if any model is invalid
+				   if (model != null && !Boolean.TRUE.equals(model.isValid())) {
+					   hasInvalid = true;
+				   }
+			   }
+			   ObjectNode responseNode = mapper.createObjectNode();
+			   if (hasInvalid) {
+				   responseNode.put("message", "Merge operation is failed due to invalid files");
+			   } else {
+				   responseNode.put("message", "Merge operation is successful and merged SBOM available in sbomJson property of the response");
+			   }
+			   
+			   responseNode.set("response", arrayNode);
+			   // Return pretty-printed JSON
+			   try {
+				   String prettyJson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(responseNode);
+				   ObjectMapper prettyMapper = new ObjectMapper();
+				   return (ObjectNode) prettyMapper.readTree(prettyJson);
+			   } catch (Exception e) {
+				   LOGGER.error("Error pretty-printing responseNode in validateAndMerge", e);
+				   return responseNode;
+			   }
 		   }
-
+	
+	/**
+	 * Validates that the uploaded manifest file matches the expected schemaType.
+	 * Returns null if valid, or an error message if invalid.
+	 *
+	 * @param manifestContent The manifest file content as a String
+	 * @param schemaType The schemaType (e.g., "cdqcydx", "cyclonedx", "cdqspdx2.3")
+	 * @return null if valid, or error message if invalid
+	 */
+	private String validateManifestFileForSchemaType(String manifestContent, String schemaType,MultipartFile manifestFile) {
+	    if (manifestContent == null || manifestContent.trim().isEmpty()) {
+	        return "Manifest file is empty.";
+	    }
+	    ObjectMapper mapper = new ObjectMapper();
+	    try {
+	    	Set<String> errors =
+	    			sbomUtilityService.manifestFileValidate(schemaType, manifestFile);
+	        if (!errors.isEmpty()) {
+	        	return "Manifest file is missing : " + errors;
+	        }
+	    } catch (Exception e) {
+	        return "Manifest file is not a valid JSON document: " + e.getMessage();
+	    }
+	    return null;
+	 }
 	}

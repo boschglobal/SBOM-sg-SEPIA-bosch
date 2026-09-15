@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -25,13 +26,21 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import javax.validation.ConstraintViolation;
+import javax.validation.Validation;
+import javax.validation.Validator;
+import javax.validation.ValidatorFactory;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.cyclonedx.Version;
 import org.json.JSONObject;
 import org.openchainproject.sepia.model.BomFilesInputModel;
+import org.openchainproject.sepia.model.CDQSpdx23Manifest;
 import org.openchainproject.sepia.model.ChangeLog;
+import org.openchainproject.sepia.model.CycloneDx14Manifest;
 import org.openchainproject.sepia.model.ErrorModel;
+import org.openchainproject.sepia.model.Spdx23Manifest;
 import org.openchainproject.sepia.service.SbomUtilityService;
 import org.openchainproject.sepia.util.Constants;
 import org.openchainproject.sepia.util.JsonPathFinder;
@@ -56,6 +65,7 @@ import com.networknt.schema.SchemaValidatorsConfig;
 import com.networknt.schema.SpecVersion;
 import com.networknt.schema.SpecVersion.VersionFlag;
 import com.networknt.schema.ValidationMessage;
+import org.openchainproject.sepia.model.CDQCycloneDx16Manifest;
 
 @Service
 public class SbomUtilityServiceImpl implements SbomUtilityService {
@@ -373,6 +383,154 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 		}
 
 		return bomFilesInputModel;
+	}
+	
+	@Override 
+	public List<BomFilesInputModel> validateAndMergeFromAPI(Optional<MultipartFile[]> inputFile, String manifestContent, BomFilesInputModel sbomInputModel) {
+		List<BomFilesInputModel> bomFilesInputList = new ArrayList<>();
+		BomFilesInputModel bomFilesInputModel = null;
+		boolean isMergePossible = true;
+		try {
+			MultipartFile[] files = inputFile.get();
+			for (int i = 0; i < files.length; i++) {
+				MultipartFile file = files[i];
+				
+				VersionFlag versionFlag = null;
+				String schemaFileName = null;
+				ObjectMapper mapper = new ObjectMapper();
+				
+				JsonSchemaFactory schemaFactory = null;
+				InputStream schemaStream = null;
+				InputStream inputJsonStream = null;
+				JsonNode json = null;
+				JsonSchema schema = null;
+				
+				bomFilesInputModel = new BomFilesInputModel();
+				String schemaType = sbomInputModel.getSchemaType();
+				bomFilesInputModel.setSchemaType(schemaType);
+				bomFilesInputModel.setSbomFile(file);
+				bomFilesInputModel.setSbomJsonString(new String(file.getBytes(), StandardCharsets.UTF_8));
+			    bomFilesInputModel.setSbomFileName(file.getOriginalFilename());
+			    
+				if (!StringUtils.isEmpty(schemaType)) {
+					if (schemaType.equalsIgnoreCase(Constants.CYCLONEDX_LC)) {
+						versionFlag = SpecVersion.VersionFlag.V7;
+						schemaFileName = "/cyclonedx_1.4.schema.json";
+					} else if (schemaType.equalsIgnoreCase(Constants.SPDX_LC)) {
+						versionFlag = SpecVersion.VersionFlag.V201909;
+						schemaFileName = "/spdx_2.3.schema.json";
+					} else if (schemaType.equalsIgnoreCase(Constants.SPDX2_2_LC)) {
+						versionFlag = SpecVersion.VersionFlag.V7;
+						schemaFileName = "/spdx_2.2.schema.json";
+					} else if (schemaType.equalsIgnoreCase(Constants.CDQ_SPDX2_3_LC)) {
+						versionFlag = SpecVersion.VersionFlag.V201909;
+						schemaFileName = "/CDQspdx_2.3.schema.json";
+					}  else if (schemaType.equalsIgnoreCase(Constants.CDQ_CYDX1_6_LC)) {
+						versionFlag = SpecVersion.VersionFlag.V7;
+						schemaFileName = "/CDQcyclonedx_1.6.json";
+					} 
+					else if (schemaType.equalsIgnoreCase(Constants.CUSTOM)) {
+						String schemaJsonString = bomFilesInputModel.getSchemaJsonString();
+						schemaStream = new ByteArrayInputStream(schemaJsonString.getBytes(StandardCharsets.UTF_8));
+						JsonNode schemaJsonNode = mapper.readTree(schemaJsonString);
+						String schemaParameter = schemaJsonNode.get(Constants.DOLLAR_SCHEMA) != null
+								? schemaJsonNode.get(Constants.DOLLAR_SCHEMA).toString()
+								: null;
+						versionFlag = schemaParameter != null
+								? getCustomSchemaVersion(schemaParameter.replaceAll("^\"|\"$", ""))
+								: null;
+					}
+				}
+				if (!schemaType.equalsIgnoreCase(Constants.CUSTOM)) {
+					schemaStream = getClass().getResourceAsStream(schemaFileName);
+				}
+				if (versionFlag != null) {
+					schemaFactory = JsonSchemaFactory.getInstance(versionFlag);
+					inputJsonStream = new ByteArrayInputStream(
+							bomFilesInputModel.getSbomJsonString().getBytes(StandardCharsets.UTF_8));
+					json = mapper.readTree(inputJsonStream);
+					SchemaValidatorsConfig config = SchemaValidatorsConfig.builder()
+							.cacheRefs(false)
+							.preloadJsonSchema(false)
+							.build();
+					schema = schemaFactory.getSchema(schemaStream, config);
+
+					Set<ValidationMessage> validationResult = schema.validate(json);
+					bomFilesInputModel.setValid(validationResult.isEmpty());
+					
+					if (schemaType.equalsIgnoreCase(Constants.CYCLONEDX_LC)) {
+						List<String> bomRefDupePaths = JsonPathFinder.findRepetitionPaths(json, "bom-ref");
+						bomFilesInputModel.setValid(
+								bomFilesInputModel.isValid() && (bomRefDupePaths == null || bomRefDupePaths.isEmpty()));
+						List<ErrorModel> errList = new ArrayList<>();
+						List<ErrorModel> customErrs = new ArrayList<>();
+						for (String path : bomRefDupePaths) {
+							errList.add(new ErrorModel(path, "Duplicate 'bom-ref' value found", null));
+							if (!StringUtils.isEmpty(path)) {
+								String[] pathArr = path.replace("$.", "").replaceAll("[\\[]", ".")
+										.replaceAll("[\\]]", "").split("\\.");
+								customErrs.add(new ErrorModel(null, "Duplicate 'bom-ref' value found", pathArr));
+							}
+						}
+						bomFilesInputModel.setErrorDetails(errList);
+						bomFilesInputModel.setCustomErrorDetails(customErrs);
+					}
+					List<ErrorModel> duplicateSpdxIdsList = null;
+					if (schemaType.equalsIgnoreCase(Constants.SPDX_LC)) {
+						duplicateSpdxIdsList = checkDuplicateSpdxId(bomFilesInputModel.getSbomJsonString());
+						bomFilesInputModel.setValid(bomFilesInputModel.isValid() && duplicateSpdxIdsList.isEmpty());
+					}
+					if (!bomFilesInputModel.isValid()) {
+						List<ErrorModel> errList = bomFilesInputModel.getErrorDetails();
+						if (errList == null) {
+							errList = new ArrayList<>();
+						}
+						errList.addAll(validationResult.stream().map(v -> v.getMessage().split(":"))
+								.map(error -> new ErrorModel(error[0], error[1], null)).collect(Collectors.toList()));
+						bomFilesInputModel.setErrorDetails(errList);
+
+						if (duplicateSpdxIdsList != null && !duplicateSpdxIdsList.isEmpty()) {
+							bomFilesInputModel.addErrorModel(duplicateSpdxIdsList);
+							bomFilesInputModel.setCustomErrorDetails(duplicateSpdxIdsList);
+						}
+
+					}
+
+
+				}else {
+					bomFilesInputModel.setValid(false);
+
+					ErrorModel errorModel = new ErrorModel("SCHEMA", "The provided schema is invalid", null);
+					List<ErrorModel> errorModelList = new ArrayList<>();
+					errorModelList.add(errorModel);
+
+					bomFilesInputModel.setErrorDetails(errorModelList);
+				}
+				
+				int errorCount = bomFilesInputModel.getErrorDetails() == null ? 0 : bomFilesInputModel.getErrorDetails().size();
+				if (errorCount == 0) {
+					bomFilesInputModel.setMessage("File uploaded successfully and validation is completed without any errors");
+					bomFilesInputList.add(bomFilesInputModel);
+				} else {
+					isMergePossible = false;
+					bomFilesInputModel.setMessage("File uploaded successfully and validation is completed with " + errorCount + " errors");
+					bomFilesInputList.add(bomFilesInputModel);
+				}
+
+			}
+			if(isMergePossible) {
+				BomFilesInputModel mergedBom = mergeSboms(bomFilesInputList, manifestContent, sbomInputModel.getSchemaType(), false);
+				bomFilesInputList.removeAll(bomFilesInputList);
+				bomFilesInputList.add(mergedBom);
+			}
+		} catch (Exception e) {
+			LOGGER.error("Exception occured while validation the Sbom file", e);
+			bomFilesInputModel.setMessage("Error:" + e.getMessage());
+			bomFilesInputModel.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+			bomFilesInputList.add(bomFilesInputModel);
+		}
+		return bomFilesInputList;
+	
 	}
 
 	/**
@@ -779,17 +937,35 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 				String timestamp = bomInputList.get(0).getSessionId();
 
 				for (BomFilesInputModel curBom : bomInputList) {
-					File inputFile = new File(getFilePathFromModel(curBom) + File.separator + curBom.getSbomFileName());
+					File inputFile = null;
+					if (isFromApp) {
+						inputFile = new File(getFilePathFromModel(curBom) + File.separator + curBom.getSbomFileName());
+					} else {
+						if (schemaType.equalsIgnoreCase(Constants.SPDX_LC)
+								|| schemaType.equalsIgnoreCase(Constants.CUSTOM) || schemaType.equalsIgnoreCase(Constants.CDQ_SPDX2_3_LC)) {
+							MultipartFile mf = curBom.getSbomFile();
+							if (mf != null) {
+								inputFile = File.createTempFile("sbom-", ".json");
+								mf.transferTo(inputFile);
+							} else {
+								throw new IllegalStateException("SBOM file is missing in model");
+							}
+						}
+					}
 					if (schemaType.equalsIgnoreCase(Constants.SPDX_LC)
-							|| schemaType.equalsIgnoreCase(Constants.CUSTOM)) {
+							|| schemaType.equalsIgnoreCase(Constants.CUSTOM) || schemaType.equalsIgnoreCase(Constants.CDQ_SPDX2_3_LC)) {
 						ObjectNode bomNode = (ObjectNode) mapper
 								.readTree(FileUtils.readFileToString(inputFile, StandardCharsets.UTF_8));
 						bomNode.put("FileName", curBom.getSbomFileName());
 						bomNodes.add(bomNode);
 					}
+					// Clean up temp file if created
+					if (!isFromApp && inputFile != null && inputFile.exists()) {
+						inputFile.delete();
+					}
 				}
 
-				if (schemaType.equalsIgnoreCase(Constants.SPDX_LC)) {
+				if (schemaType.equalsIgnoreCase(Constants.SPDX_LC) || schemaType.equalsIgnoreCase(Constants.CDQ_SPDX2_3_LC)) {
 					bomFileInput = SbomMergeUtil.mergeSPDXBoms(bomNodes, bomMetadata, isFromApp);
 				} else if (schemaType.equalsIgnoreCase(Constants.CYCLONEDX_LC)) {
 					Version cycloneDxVersion = getCycloneDxOutputFileVersion("v1_4");
@@ -807,7 +983,7 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 				bomFileInput.setSessionId(timestamp);
 				bomFileInput = validateSboms(bomFileInput, true, false);
 				bomFileInput.setFileHash(sbomFileUtils.generateFileHash(bomFileInput.getSbomJsonString()));
-
+				bomFileInput.setMessage("SBOM files merged successfully and validation is completed with " + (bomFileInput.getErrorDetails() == null ? 0 : bomFileInput.getErrorDetails().size()) + " errors");
 				bomFileInput.setSbomFileName("mergedSbomContent.json");
 
 			} else {
@@ -1095,5 +1271,79 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 			}
 		}
 	}
+	
+	
+	public Set<String> manifestFileValidate(
+            String schemaType,
+            MultipartFile file) throws Exception {
+
+        Object manifestObject;
+        ObjectMapper mapper = new ObjectMapper();
+        ValidatorFactory factory =
+                Validation.buildDefaultValidatorFactory();
+
+        Validator validator = factory.getValidator();
+        
+        
+        switch (schemaType.toLowerCase()) {
+
+            case Constants.CDQ_CYDX1_6_LC:
+
+                manifestObject = mapper.readValue(
+                        file.getInputStream(),
+                        CDQCycloneDx16Manifest.class
+                );
+
+                break;
+
+            case Constants.CYCLONEDX_LC:
+
+                manifestObject = mapper.readValue(
+                        file.getInputStream(),
+                        CycloneDx14Manifest.class
+                );
+
+                break;
+           
+            case Constants.CDQ_SPDX2_3_LC:
+
+                manifestObject = mapper.readValue(
+                        file.getInputStream(),
+                        CDQSpdx23Manifest.class
+                );
+
+                break;
+                
+            case Constants.SPDX_LC:
+
+                manifestObject = mapper.readValue(
+                        file.getInputStream(),
+                        Spdx23Manifest.class
+                );
+
+                break;    
+
+            default:
+                throw new IllegalArgumentException(
+                        "Invalid schema type"
+                );
+        }
+
+        Set<ConstraintViolation<Object>> violations =
+                validator.validate(manifestObject);
+
+        Set<String> errors = new HashSet<>();
+
+        for (ConstraintViolation<Object> violation : violations) {
+
+            errors.add(
+                    violation.getPropertyPath()
+                            + " : "
+                            + violation.getMessage()
+            );
+        }
+
+        return errors;
+    }
 	
 }

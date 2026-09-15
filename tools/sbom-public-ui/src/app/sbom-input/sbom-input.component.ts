@@ -291,8 +291,8 @@ export class SbomInputComponent {
             this.spdxMergedcreators.push('Organization:' + this.spdxCreatorOrg);
             this.spdxMergedcreators.push('Person:' + this.spdxCreatorPerson);
             this.spdxMergedCreationInfo.creators = this.spdxMergedcreators;
-            this.spdxMergedCreationInfo.created = new Date().toISOString();
-            this.spdxMergedCreationInfo.comment = 'This SPDX file generated from Merge operation using SBOM Validator tool.'
+            //this.spdxMergedCreationInfo.created = new Date().toISOString();
+            //this.spdxMergedCreationInfo.comment = 'This SPDX file generated from Merge operation using SBOM Validator tool.'
 
             this.spdxMerged.creationInfo = this.spdxMergedCreationInfo;
 
@@ -316,8 +316,6 @@ export class SbomInputComponent {
             this.cdqSpdxMergedcreators.push('Organization:' + this.cdqSpdxCreatorOrg);
             this.cdqSpdxMergedcreators.push('Person:' + this.cdqSpdxCreatorPerson);
             this.cdqSpdxMergedCreationInfo.creators = this.cdqSpdxMergedcreators;
-            this.cdqSpdxMergedCreationInfo.created = new Date().toISOString();
-            this.cdqSpdxMergedCreationInfo.comment = 'This SPDX file generated from Merge operation using SBOM Validator tool.'
             this.cdqSpdxMerged.creationInfo = this.cdqSpdxMergedCreationInfo;
 
 

@@ -9,6 +9,7 @@ package org.openchainproject.sepia.util;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -58,6 +59,7 @@ import org.openchainproject.sepia.model.BomFilesInputModel;
 import org.openchainproject.sepia.model.ChangeLog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.MapperFeature;
@@ -87,7 +89,6 @@ public class SbomMergeUtil {
 	public static BomFilesInputModel hierarchicalMerge(String rootPath, List<BomFilesInputModel> bomInputList, 
 			String bomMetadata, Version version, boolean isFromApp) throws Exception {
 
-		Set<String> bomRefSet = new HashSet<>();
 		ObjectMapper mapper = new ObjectMapper();
 
 		Bom mergedBom = mapper.readValue(bomMetadata, Bom.class);
@@ -165,9 +166,26 @@ public class SbomMergeUtil {
 
 		for (BomFilesInputModel bomInput : bomInputList) {
 			JsonParser jsonParser = new JsonParser();
+			File inputFile;
+			if (isFromApp) {
+				    inputFile = new File(rootPath + File.separator + bomInput.getIndex() + "_cyclonedx" + File.separator + bomInput.getSbomFileName());
+			}else {
+				MultipartFile mf = bomInput.getSbomFile();
+				if (mf != null) {
+					inputFile = File.createTempFile("sbom-", ".json");
+					mf.transferTo(inputFile);
+				} else {
+					throw new IllegalStateException("SBOM file is missing in model");
+				}
 
-			File inputFile = new File(rootPath + File.separator + bomInput.getIndex() + "_cyclonedx" + File.separator + bomInput.getSbomFileName());
+			}
+			
 			Bom bom = jsonParser.parse(Files.readAllBytes(inputFile.toPath()));
+			
+			// Clean up temp file if created
+			if (!isFromApp && inputFile != null && inputFile.exists()) {
+				inputFile.delete();
+			}
 
 			Component metaComp = bom.getMetadata().getComponent();
 
@@ -214,7 +232,7 @@ public class SbomMergeUtil {
 
 			mergedBom.getComponents().add(metaComp);
 
-			// services
+			// services (with dedup and nested service traversal)
 			if (bom.getServices() != null) {
 				int serviceStartIdx = mergedBom.getServices().size();
 				deduplicateServiceBomRefs(bom.getServices(), bomrefIdSet, bomrefIdMap, changeLogsList, bomInput.getSbomFileName(), serviceStartIdx, "$.services", Constants.CYCLONEDX_LC);
@@ -355,9 +373,27 @@ public class SbomMergeUtil {
 
 		for (BomFilesInputModel bomInput : bomInputList) {
 			JsonParser jsonParser = new JsonParser();
-			File inputFile = new File(rootPath + File.separator + bomInput.getIndex() + "_cdqcydx"
-					+ File.separator + bomInput.getSbomFileName());
+			File inputFile = null;
+			if (isFromApp) {
+			     inputFile = new File(rootPath + File.separator + bomInput.getIndex() + "_cdqcydx"
+						+ File.separator + bomInput.getSbomFileName());
+			}else {
+				MultipartFile mf = bomInput.getSbomFile();
+				if (mf != null) {
+					inputFile  = File.createTempFile("sbom-", ".json");
+					mf.transferTo(inputFile);
+				} else {
+					throw new IllegalStateException("SBOM file is missing in model");
+				}
+
+			}
+
 			Bom bom = jsonParser.parse(Files.readAllBytes(inputFile.toPath()));
+			
+			// Clean up temp file if created
+			if (!isFromApp && inputFile != null && inputFile.exists()) {
+				inputFile.delete();
+			}
 
 			Component metaComp = bom.getMetadata().getComponent();
 
@@ -1077,7 +1113,19 @@ public class SbomMergeUtil {
 			mergedSpdxBomNode.put(Constants.DOCUMENT_NAMESPACE ,
 					"http://spdx.org/spdxdocs/" + (mergedFileSpdxID.substring(0, mergedFileSpdxID.indexOf("#"))));
 			ObjectNode bomMetadataNode = (ObjectNode) mapper.readTree(bomMetadata);
-			mergedSpdxBomNode.put(Constants.CREATION_INFO, bomMetadataNode.get(Constants.CREATION_INFO));
+			
+			ObjectNode bomMetadataCreationInfoNode = mapper.createObjectNode();
+			bomMetadataCreationInfoNode = (ObjectNode) bomMetadataNode.get(Constants.CREATION_INFO);
+			
+			if(bomMetadataCreationInfoNode != null && !bomMetadataCreationInfoNode.isNull()) {
+				bomMetadataCreationInfoNode.put(Constants.CREATED, Instant.now().toString());
+				bomMetadataCreationInfoNode.put(Constants.COMMENT, "This SPDX file generated from Merge operation using SBOM Validator tool.");
+				
+			}
+			
+			mergedSpdxBomNode.put(Constants.CREATION_INFO, bomMetadataCreationInfoNode);
+			
+
 
 			ArrayNode bomMetaPackageNode = (ArrayNode) bomMetadataNode.get(Constants.PACKAGES);
 

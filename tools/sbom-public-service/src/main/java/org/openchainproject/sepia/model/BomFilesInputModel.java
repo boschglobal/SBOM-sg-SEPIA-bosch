@@ -9,6 +9,7 @@ import java.util.List;
 
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -37,6 +38,7 @@ public class BomFilesInputModel {
 	@ApiModelProperty(required = true)
 	private String schemaVersion;
 	
+	@JsonIgnore
 	private MultipartFile sbomFile;
 	
 	private MultipartFile schemaFile;

@@ -6,6 +6,7 @@ package org.openchainproject.sepia.service;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.openchainproject.sepia.model.BomFilesInputModel;
 import org.openchainproject.sepia.model.ChangeLog;
@@ -102,5 +103,17 @@ public interface SbomUtilityService {
 	 * @param sbomInputModel the response model to write
 	 */
 	void writeResponseLog(BomFilesInputModel sbomInputModel);
+
+	/**
+	 * Validates and merges the input BOM files from API request. If both files are present, they are merged.
+	 * @param inputFile
+	 * @param manifestFile
+	 * @param sbomInputModel
+	 * @return
+	 */
+	List<BomFilesInputModel> validateAndMergeFromAPI(Optional<MultipartFile[]> inputFile,
+			String manifestContent, BomFilesInputModel sbomInputModel);
+
+	Set<String> manifestFileValidate(String schemaType, MultipartFile manifestFile) throws Exception;
  
 }
