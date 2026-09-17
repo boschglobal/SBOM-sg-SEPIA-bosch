@@ -557,7 +557,7 @@ SPDX-License-Identifier: MIT -->
             </div>
             <div class="row">
                 <div class="col-md-3">
-                  <label for="meta_comp_name" class="form-label">Component Name</label>
+                  <label for="meta_comp_name" class="form-label">Component Name <span style="color: red;">*</span></label>
                   <input type="text" class="form-control custom-input" id="meta_comp_name" name="meta_comp_name" required
                     [(ngModel)]="cdqCydxMerged.metadata.component.name"
                     [ngClass]="{'is-invalid': isFieldInvalid('componentName', mergeType)}" />
@@ -566,7 +566,7 @@ SPDX-License-Identifier: MIT -->
                   </div>
                 </div>
                 <div class="col-md-3">
-                    <label for="meta_comp_group" class="form-label">Component Group</label>
+                    <label for="meta_comp_group" class="form-label">Component Group <span style="color: red;">*</span></label>
                     <input type="text" class="form-control custom-input" id="meta_comp_group" name="meta_comp_group" required
                       [(ngModel)]="cdqCydxMerged.metadata.component.group"
                       [ngClass]="{'is-invalid': isFieldInvalid('componentGroup', mergeType)}" />
@@ -575,7 +575,7 @@ SPDX-License-Identifier: MIT -->
                     </div>
                 </div>
                 <div class="col-md-3">
-                  <label for="meta_comp_type" class="form-label">Component Type</label>
+                  <label for="meta_comp_type" class="form-label">Component Type <span style="color: red;">*</span></label>
                   <select class="form-select custom-select-input" id="meta_comp_type" name="meta_comp_type"
                     [(ngModel)]="cdqCydxMerged.metadata.component.type" required
                     [ngClass]="{'is-invalid': isFieldInvalid('componentType', mergeType)}">
@@ -588,7 +588,7 @@ SPDX-License-Identifier: MIT -->
                   </div>
                 </div>
                 <div class="col-md-3">
-                   <label for="meta_comp_version" class="form-label">Component Version</label>
+                   <label for="meta_comp_version" class="form-label">Component Version <span style="color: red;">*</span></label>
                    <input type="text" class="form-control custom-input" id="meta_comp_version" name="meta_comp_version" required
                       [(ngModel)]="cdqCydxMerged.metadata.component.version"
                       [ngClass]="{'is-invalid': isFieldInvalid('componentVersion', mergeType)}" />
@@ -600,7 +600,7 @@ SPDX-License-Identifier: MIT -->
             </div>
             <div class="row">
               <div class="col-md-3">
-                  <label for="meta_comp_purl" class="form-label">Component PURL</label>
+                  <label for="meta_comp_purl" class="form-label">Component PURL <span style="color: red;">*</span></label>
                   <input type="text" class="form-control custom-input" id="meta_comp_purl" name="meta_comp_purl" required
                     [(ngModel)]="cdqCydxMerged.metadata.component.purl"
                     [ngClass]="{'is-invalid': isFieldInvalid('componentPurl', mergeType)}" />
@@ -645,7 +645,7 @@ SPDX-License-Identifier: MIT -->
             </div>
             <div class="row">
                 <div class="col-md-3">
-                  <label for="meta_sup_name" class="form-label">Supplier Name</label>
+                  <label for="meta_sup_name" class="form-label">Supplier Name <span style="color: red;">*</span></label>
                   <input type="text" class="form-control custom-input" id="meta_sup_name" name="meta_sup_name" required
                     [(ngModel)]="cdqCydxMerged.metadata.supplier.name"
                     [ngClass]="{'is-invalid': isFieldInvalid('supplierName', mergeType)}" />
