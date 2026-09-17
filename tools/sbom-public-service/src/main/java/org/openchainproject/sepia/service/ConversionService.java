@@ -38,7 +38,16 @@ public class ConversionService {
     public ConversionService(ObjectMapper mapper, RuleRepository repository, RuleValidator validator, RuleEngine engine, LossReporter lossReporter, ConversionDeltaAnalyzer conversionDeltaAnalyzer) {
         this.mapper=mapper; this.repository=repository; this.validator=validator; this.engine=engine; this.lossReporter=lossReporter; this.conversionDeltaAnalyzer=conversionDeltaAnalyzer;
     }
-
+    
+    /**
+     * Converts the source SBOM content from the specified source format and version to the target format and version.
+     * @param source
+     * @param sourceFormat
+     * @param sourceVersion
+     * @param targetFormat
+     * @param targetVersion
+     * @return
+     */
     public BomFilesInputModel convert(JsonNode source, String sourceFormat, String sourceVersion, String targetFormat, String targetVersion) {
         String sf = sourceFormat + "-" + sourceVersion;
         String tf = targetFormat + "-" + targetVersion;
