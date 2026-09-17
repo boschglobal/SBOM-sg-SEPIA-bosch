@@ -1,3 +1,9 @@
+/*
+ Parts of this file are created by genAI by using GitHub Copilot.
+ This notice needs to remain attached to any reproduction of or excerpt from this file.
+// SPDX-FileCopyrightText: Copyright (C) 2026 Contributors to SEPIA
+// SPDX-License-Identifier: MIT
+*/
 export const cdq_cyclonedx_1_6_schema = {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "http://cyclonedx.org/schema/bom-1.6.schema.json",
@@ -581,11 +587,43 @@ export const cdq_cyclonedx_1_6_schema = {
       "required": [
         "component",
         "supplier",
-        "licenses",
-        "authors",
         "tools",
-        "manufacturer",
         "timestamp"
+      ],
+      "anyOf": [
+        {
+          "required": ["authors"],
+          "properties": {
+            "authors": {
+              "type": "array",
+              "contains": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "pattern": "\\S"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "required": ["manufacturer"],
+          "properties": {
+            "manufacturer": {
+              "type": "object",
+              "required": ["name"],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "pattern": "\\S"
+                }
+              }
+            }
+          }
+        }
       ],
       "additionalProperties": false,
       "properties": {
@@ -607,7 +645,6 @@ export const cdq_cyclonedx_1_6_schema = {
             "oneOf": [
               {
                 "title": "Pre-Defined Phase",
-                "required": ["phase"],
                 "additionalProperties": false,
                 "properties": {
                   "phase": {
@@ -637,7 +674,6 @@ export const cdq_cyclonedx_1_6_schema = {
               },
               {
                 "title": "Custom Phase",
-                "required": ["name"],
                 "additionalProperties": false,
                 "properties": {
                   "name": {
@@ -798,7 +834,6 @@ export const cdq_cyclonedx_1_6_schema = {
     "metadataManufacturerOrganizationalEntity": {
       "type": "object",
       "title": "Organizational Entity",
-      "required": ["name"],
       "additionalProperties": false,
       "properties": {
         "bom-ref": {
@@ -809,7 +844,6 @@ export const cdq_cyclonedx_1_6_schema = {
         "name": {
           "type": "string",
           "title": "Organization Name",
-          "pattern": "\\S",
           "description": "The name of the organization",
           "examples": [
             "Example Inc."
@@ -917,9 +951,6 @@ export const cdq_cyclonedx_1_6_schema = {
     "metadataAuthorsOrganizationalContact": {
       "type": "object",
       "title": "Organizational Contact",
-      "required": [
-        "name"
-      ],
       "additionalProperties": false,
       "properties": {
         "bom-ref": {
@@ -930,7 +961,6 @@ export const cdq_cyclonedx_1_6_schema = {
         "name": {
           "type": "string",
           "title": "Name",
-          "pattern": "\\S",
           "description": "The name of a contact",
           "examples": ["Contact name"]
         },
@@ -953,9 +983,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "Organizational Contact",
       "additionalProperties": false,
-      "required": [
-        "email"
-      ],
       "properties": {
         "bom-ref": {
           "$ref": "#/definitions/refType",
@@ -971,7 +998,6 @@ export const cdq_cyclonedx_1_6_schema = {
         "email": {
           "type": "string",
           "title": "Email Address",
-          "pattern": "\\S",
           "description": "The email address of the contact.",
           "examples": ["firstname.lastname@example.com"]
         },
@@ -991,9 +1017,7 @@ export const cdq_cyclonedx_1_6_schema = {
         "name",
         "version",
         "group",
-        "purl",
-        "externalReferences",
-        "licenses"
+        "purl"
       ],
       "additionalProperties": false,
       "properties": {
@@ -1836,10 +1860,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "SWID Tag",
       "description": "Specifies metadata and content for ISO-IEC 19770-2 Software Identification (SWID) Tags.",
-      "required": [
-        "tagId",
-        "name"
-      ],
       "additionalProperties": false,
       "properties": {
         "tagId": {
@@ -1887,9 +1907,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "Attachment",
       "description": "Specifies the metadata and content for an attachment.",
-      "required": [
-        "content"
-      ],
       "additionalProperties": false,
       "properties": {
         "contentType": {
@@ -1924,10 +1941,6 @@ export const cdq_cyclonedx_1_6_schema = {
     "hash": {
       "type": "object",
       "title": "Hash",
-      "required": [
-        "alg",
-        "content"
-      ],
       "additionalProperties": false,
       "properties": {
         "alg": {
@@ -1968,14 +1981,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "License",
       "description": "Specifies the details and attributes related to a software license. It can either include a valid SPDX license identifier or a named license, along with additional properties such as license acknowledgment, comprehensive commercial licensing information, and the full text of the license.",
-      "oneOf": [
-        {
-          "required": ["id"]
-        },
-        {
-          "required": ["name"]
-        }
-      ],
       "additionalProperties": false,
       "properties": {
         "bom-ref": {
@@ -2803,7 +2808,6 @@ export const cdq_cyclonedx_1_6_schema = {
         },
         "name": {
           "type": "string",
-          "pattern": "\\S",
           "title": "License Name",
           "description": "The name of the license. This may include the name of a commercial or proprietary license or an open source license that may not be defined by SPDX.",
           "examples": ["Acme Software License"]
@@ -3011,7 +3015,6 @@ export const cdq_cyclonedx_1_6_schema = {
           "items": {
             "type": "object",
             "title": "License",
-            "required": ["license"],
             "additionalProperties": false,
             "properties": {
               "license": {"$ref": "#/definitions/license"}
@@ -3023,7 +3026,6 @@ export const cdq_cyclonedx_1_6_schema = {
           "description": "A tuple of exactly one SPDX License Expression.",
           "type": "array",
           "additionalItems": false,
-          "minItems": 1,
           "maxItems": 1,
           "items": [{
             "type": "object",
@@ -3089,9 +3091,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "Patch",
       "description": "Specifies an individual patch",
-      "required": [
-        "type"
-      ],
       "additionalProperties": false,
       "properties": {
         "type": {
@@ -3147,9 +3146,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "Issue",
       "description": "An individual issue that has been resolved.",
-      "required": [
-        "type"
-      ],
       "additionalProperties": false,
       "properties": {
         "type": {
@@ -3247,17 +3243,13 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "External Reference",
       "description": "External references provide a way to document systems, sites, and information that may be relevant but are not included with the BOM. They may also establish specific relationships within or external to the BOM.",
-      "required": [
-        "url"
-      ],
       "additionalProperties": false,
       "properties": {
         "url": {
           "anyOf": [
             {
               "title": "URL",
-              "type": "string",
-              "pattern": "\\S"
+              "type": "string"
             },
             {
               "title": "BOM-Link",
@@ -3379,9 +3371,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "Dependency",
       "description": "Defines the direct dependencies of a component, service, or the components provided/implemented by a given component. Components or services that do not have their own dependencies must be declared as empty elements within the graph. Components or services that are not represented in the dependency graph may have unknown dependencies. It is recommended that implementations assume this to be opaque and not an indicator of an object being dependency-free. It is recommended to leverage compositions to indicate unknown dependency graphs.",
-      "required": [
-        "ref"
-      ],
       "additionalProperties": false,
       "properties": {
         "ref": {
@@ -3412,9 +3401,6 @@ export const cdq_cyclonedx_1_6_schema = {
     "service": {
       "type": "object",
       "title": "Service",
-      "required": [
-        "name"
-      ],
       "additionalProperties": false,
       "properties": {
         "bom-ref": {
@@ -3522,10 +3508,6 @@ export const cdq_cyclonedx_1_6_schema = {
     "serviceData": {
       "type": "object",
       "title": "Hash Objects",
-      "required": [
-        "flow",
-        "classification"
-      ],
       "additionalProperties": false,
       "properties": {
         "flow": {
@@ -3615,9 +3597,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "Copyright",
       "description": "A copyright notice informing users of the underlying claims to copyright ownership in a published work.",
-      "required": [
-        "text"
-      ],
       "additionalProperties": false,
       "properties": {
         "text": {
@@ -3656,7 +3635,6 @@ export const cdq_cyclonedx_1_6_schema = {
           "description": "Evidence of individual instances of a component spread across multiple locations.",
           "items": {
             "type": "object",
-            "required": [ "location" ],
             "additionalProperties": false,
             "properties": {
               "bom-ref": {
@@ -3706,9 +3684,6 @@ export const cdq_cyclonedx_1_6_schema = {
               "description": "Within a call stack, a frame is a discrete unit that encapsulates an execution context, including local variables, parameters, and the return address. As function calls are made, frames are pushed onto the stack, forming an array-like structure that orchestrates the flow of program execution and manages the sequence of function invocations.",
               "items": {
                 "type": "object",
-                "required": [
-                  "module"
-                ],
                 "additionalProperties": false,
                 "properties": {
                   "package": {
@@ -3769,9 +3744,6 @@ export const cdq_cyclonedx_1_6_schema = {
     "compositions": {
       "type": "object",
       "title": "Compositions",
-      "required": [
-        "aggregate"
-      ],
       "additionalProperties": false,
       "properties": {
         "bom-ref": {
@@ -3859,9 +3831,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "Lightweight name-value pair",
       "description": "Provides the ability to document properties in a name-value store. This provides flexibility to include data not officially supported in the standard without having to use additional namespaces or create extensions. Unlike key-value stores, properties support duplicate names, each potentially having different values. Property names of interest to the general public are encouraged to be registered in the [CycloneDX Property Taxonomy](https://github.com/CycloneDX/cyclonedx-property-taxonomy). Formal registration is optional.",
-      "required": [
-        "name"
-      ],
       "properties": {
         "name": {
           "type": "string",
@@ -3897,9 +3866,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "Note",
       "description": "A note containing the locale and content.",
-      "required": [
-        "text"
-      ],
       "additionalProperties": false,
       "properties": {
         "locale": {
@@ -3917,9 +3883,6 @@ export const cdq_cyclonedx_1_6_schema = {
     "releaseNotes": {
       "type": "object",
       "title": "Release notes",
-      "required": [
-        "type"
-      ],
       "additionalProperties": false,
       "properties": {
         "type": {
@@ -3991,7 +3954,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "Advisory",
       "description": "Title and location where advisory information can be obtained. An advisory is a notification of a threat to a component, service, or system.",
-      "required": ["url"],
       "additionalProperties": false,
       "properties": {
         "title": {
@@ -4200,10 +4162,6 @@ export const cdq_cyclonedx_1_6_schema = {
           "description": "Zero or more pointers to vulnerabilities that are the equivalent of the vulnerability specified. Often times, the same vulnerability may exist in multiple sources of vulnerability intelligence, but have different identifiers. References provide a way to correlate vulnerabilities across multiple sources of vulnerability intelligence.",
           "items": {
             "type": "object",
-            "required": [
-              "id",
-              "source"
-            ],
             "additionalProperties": false,
             "properties": {
               "id": {
@@ -4431,9 +4389,6 @@ export const cdq_cyclonedx_1_6_schema = {
           "uniqueItems": true,
           "items": {
             "type": "object",
-            "required": [
-              "ref"
-            ],
             "additionalProperties": false,
             "properties": {
               "ref": {
@@ -4563,12 +4518,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "Annotations",
       "description": "A comment, note, explanation, or similar textual content which provides additional context to the object(s) being annotated.",
-      "required": [
-        "subjects",
-        "annotator",
-        "timestamp",
-        "text"
-      ],
       "additionalProperties": false,
       "properties": {
         "bom-ref": {
@@ -4865,9 +4814,6 @@ export const cdq_cyclonedx_1_6_schema = {
     "componentData": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type"
-      ],
       "properties": {
         "bom-ref": {
           "$ref": "#/definitions/refType",
@@ -5152,11 +5098,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "title": "Energy consumption",
       "description": "Describes energy consumption information incurred for the specified lifecycle activity.",
       "type": "object",
-      "required": [
-        "activity",
-        "energyProviders",
-        "activityEnergyCost"
-      ],
       "additionalProperties": false,
       "properties": {
         "activity": {
@@ -5221,10 +5162,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "Energy Measure",
       "description": "A measure of energy.",
-      "required": [
-        "value",
-        "unit"
-      ],
       "additionalProperties": false,
       "properties": {
         "value": {
@@ -5247,10 +5184,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "CO2 Measure",
       "description": "A measure of carbon dioxide (CO2).",
-      "required": [
-        "value",
-        "unit"
-      ],
       "additionalProperties": false,
       "properties": {
         "value": {
@@ -5273,11 +5206,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "Energy Provider",
       "description": "Describes the physical provider of energy used for model development or operations.",
-      "required": [
-        "organization",
-        "energySource",
-        "energyProvided"
-      ],
       "additionalProperties": false,
       "properties": {
         "bom-ref": {
@@ -5442,11 +5370,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "description": "A specialized orchestration task.",
       "$comment": "Workflow are as task themselves and can trigger other workflow tasks.  These relationships can be modeled in the taskDependencies graph.",
       "type": "object",
-      "required": [
-        "bom-ref",
-        "uid",
-        "taskTypes"
-      ],
       "additionalProperties": false,
       "properties": {
         "bom-ref": {
@@ -5586,11 +5509,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "description": "Describes the inputs, sequence of steps and resources used to accomplish a task and its output.",
       "$comment": "Tasks are building blocks for constructing assemble CI/CD workflows or pipelines.",
       "type": "object",
-      "required": [
-        "bom-ref",
-        "uid",
-        "taskTypes"
-      ],
       "additionalProperties": false,
       "properties": {
         "bom-ref": {
@@ -5762,10 +5680,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "title": "Workspace",
       "description": "A named filesystem or data resource shareable by workflow tasks.",
       "type": "object",
-      "required": [
-        "bom-ref",
-        "uid"
-      ],
       "additionalProperties": false,
       "properties": {
         "bom-ref": {
@@ -5911,11 +5825,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "description": "Represents a resource that can conditionally activate (or fire) tasks based upon associated events and their data.",
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type",
-        "bom-ref",
-        "uid"
-      ],
       "properties": {
         "bom-ref": {
           "title": "BOM Reference",
@@ -6359,7 +6268,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "type": "object",
       "title": "Identity Evidence",
       "description": "Evidence that substantiates the identity of a component.",
-      "required": [ "field" ],
       "additionalProperties": false,
       "properties": {
         "field": {
@@ -6388,10 +6296,6 @@ export const cdq_cyclonedx_1_6_schema = {
           "description": "The methods used to extract and/or analyze the evidence.",
           "items": {
             "type": "object",
-            "required": [
-              "technique" ,
-              "confidence"
-            ],
             "additionalProperties": false,
             "properties": {
               "technique": {
@@ -6635,10 +6539,6 @@ export const cdq_cyclonedx_1_6_schema = {
     "signer": {
       "type": "object",
       "title": "Signature",
-      "required": [
-        "algorithm",
-        "value"
-      ],
       "additionalProperties": false,
       "properties": {
         "algorithm": {
@@ -6719,9 +6619,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "title": "Public key",
       "description": "Optional. Public key object.",
       "type": "object",
-      "required": [
-        "kty"
-      ],
       "additionalProperties": true,
       "properties": {
         "kty": {
@@ -6738,12 +6635,6 @@ export const cdq_cyclonedx_1_6_schema = {
             }
           },
           "then": {
-            "required": [
-              "kty",
-              "crv",
-              "x",
-              "y"
-            ],
             "additionalProperties": false,
             "properties": {
               "kty": {
@@ -6781,11 +6672,6 @@ export const cdq_cyclonedx_1_6_schema = {
             }
           },
           "then": {
-            "required": [
-              "kty",
-              "crv",
-              "x"
-            ],
             "additionalProperties": false,
             "properties": {
               "kty": {
@@ -6817,11 +6703,6 @@ export const cdq_cyclonedx_1_6_schema = {
             }
           },
           "then": {
-            "required": [
-              "kty",
-              "n",
-              "e"
-            ],
             "additionalProperties": false,
             "properties": {
               "kty": {
@@ -6847,9 +6728,6 @@ export const cdq_cyclonedx_1_6_schema = {
       "title": "Cryptographic Properties",
       "description": "Cryptographic assets have properties that uniquely define them and that make them actionable for further reasoning. As an example, it makes a difference if one knows the algorithm family (e.g. AES) or the specific variant or instantiation (e.g. AES-128-GCM). This is because the security level and the algorithm primitive (authenticated encryption) are only defined by the definition of the algorithm variant. The presence of a weak cryptographic algorithm like SHA1 vs. HMAC-SHA1 also makes a difference.",
       "additionalProperties": false,
-      "required": [
-        "assetType"
-      ],
       "properties": {
         "assetType": {
           "type": "string",

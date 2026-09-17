@@ -25,6 +25,7 @@ import autoTable from 'jspdf-autotable';
 import { HealthCheckService } from '../services/health-check.service';
 import { cdq_cyclonedx_1_6_schema } from '../schema/cdq_cyclonedx_1.6.schema';
 import { CDQComponentType, CDQCycloneDXSBOMStandard, CDQExternalReference, CDQLicense, CDQLicenseIDs, CDQOrganizationalContactObject, CDQOrganizationalEntityObject } from '../models/cdqcyclonedx.model';
+import { FormValidationUtil } from '../utils/validation.util';
 
 
 
@@ -98,6 +99,33 @@ export class SbomInputComponent {
   showAlert: boolean = false;
   currentModal!: TemplateRef<any> | null;
   alertModal!: TemplateRef<any> | null;
+
+  public convertSourceSchema: string = '';
+  public convertTargetSchema: string = '';
+  private itemToConvert!: UploadModel | null;
+  private convertTargetModal!: TemplateRef<any> | null;
+
+  getLossEventSeverityCount(severity: string): number {
+    return this.fileToEdit.lossEvent?.filter((event) =>
+      event.severity?.toLowerCase() === severity.toLowerCase()
+    ).length ?? 0;
+  }
+
+  getLossEventSeverityClass(severity: string): string {
+    const normalizedSeverity = severity?.toLowerCase();
+    const supportedSeverities = ['blocker', 'major', 'minor', 'informational'];
+
+    return supportedSeverities.includes(normalizedSeverity)
+      ? `severity-${normalizedSeverity}`
+      : 'severity-unknown';
+  }
+
+  // Validation properties for merge forms
+  public cdqSpdxInvalidFields: Set<string> = new Set();
+  public spdxInvalidFields: Set<string> = new Set();
+  public cycloneDXInvalidFields: Set<string> = new Set();
+  public cdqCycloneDXInvalidFields: Set<string> = new Set();
+  public mergeFormValidationMessage: string = '';
   isModalOpen = false;
   isDialogBoxOpen = false;
   /**
@@ -145,6 +173,9 @@ export class SbomInputComponent {
 
   @ViewChild('confirmSessionClearModal')
   confirmSessionClearModal!: TemplateRef<any>;
+
+  @ViewChild('convertConfirmModal')
+  convertConfirmModal!: TemplateRef<any>;
 
   @ViewChild('errorDetailsModal')
   errorDetailsModal!: TemplateRef<any>;
@@ -365,7 +396,7 @@ export class SbomInputComponent {
       this.editorOptions.sortObjectKeys = true;
     }
      else if (this.fileToEdit.schemaType === "custom") {
-      this.fileToEdit.sbomJson = JSON.parse(this.fileToEdit.sbomJsonString);
+      this.fileToEdit.sbomJson =this.sanitizeSchemaObject(JSON.parse(this.fileToEdit.sbomJsonString)) ;
       let sanitizedSchema = this.sanitizeSchemaObject(JSON.parse(this.fileToEdit.schemaJsonString));
       this.fileToEdit.schemaJsonString = JSON.stringify(sanitizedSchema);
       this.editorOptions.schema = sanitizedSchema;
@@ -416,7 +447,8 @@ export class SbomInputComponent {
   /**
    * Recursively walks a JSON Schema object and removes unsupported "format"
    * values so that AJV (inside jsoneditor) does not throw errors.
-   * Also removes the top-level "$schema" key which can cause issues.
+   * Also removes the top-level "$schema" key and external schema references
+   * to prevent resolution errors.
    */
   sanitizeSchemaObject(schema: any): any {
     if (schema === null || schema === undefined || typeof schema !== 'object') {
@@ -432,7 +464,18 @@ export class SbomInputComponent {
       if (key === '$schema') {
         continue;
       }
-      if (key === 'format' && typeof schema[key] === 'string') {
+      if (key === '$ref' && typeof schema[key] === 'string') {
+        // Skip external references that can't be resolved locally
+        // (e.g., "spdx.schema.json", "http://...", "https://...")
+        const refValue = schema[key];
+        if (refValue.startsWith('http://') || refValue.startsWith('https://') ||
+            refValue === 'spdx.schema.json') {
+          // Skip remote references - they cannot be resolved in the browser
+          continue;
+        }
+        // Keep local references (starting with #)
+        sanitized[key] = refValue;
+      } else if (key === 'format' && typeof schema[key] === 'string') {
         if (this.supportedFormats.has(schema[key])) {
           sanitized[key] = schema[key];
         }
@@ -790,24 +833,69 @@ export class SbomInputComponent {
     this.fileSaveSuccess = false;
     this.fileUploadSuccess = false;
     this.enableModalSave = false;
+    this.isLoading = true;
     console.log(this.cdxMerged);
     this.schemaTypesToMerge.values
     this.sbomInputService.mergeSboms(this.sbomListToProcess, this.cdxMerged, this.spdxMerged, this.cdqSpdxMerged,this.cdqCydxMerged,this.mergeType).subscribe((data: UploadModel) => {
+      this.isLoading = false;
       this.fileToEdit = data;
       this.initializeUndefinedObjects();
       this.openModal(modal);
       this.logAction(data, 'Merge');
+    },
+    (error) => {
+      this.isLoading = false;
     })
   }
 
-  convertSboms(item: UploadModel) {
-    this.mergeMode = false;
+  canConvert(item: UploadModel): boolean {
+    return item.valid === true && (item.schemaType === 'cdqspdx2.3' || item.schemaType === 'cdqcydx');
+  }
+
+  getSchemaDisplayName(schemaType: string): string {
+    switch (schemaType) {
+      case 'spdx':
+        return 'SPDX V2.3';
+      case 'spdx2.2':
+        return 'SPDX V2.2';
+      case 'cyclonedx':
+        return 'CycloneDX V1.4';
+      case 'cdqcydx':
+        return 'CDQ CycloneDX V1.6';
+      case 'cdqspdx2.3':
+        return 'CDQ SPDX V2.3';
+      default:
+        return schemaType;
+    }
+  }
+
+  confirmConvert(item: UploadModel, modal: TemplateRef<any>) {
+    this.itemToConvert = item;
+    this.convertTargetModal = modal;
+    const targetSchemaType = item.schemaType === 'cdqspdx2.3' ? 'cdqcydx' : 'cdqspdx2.3';
+    this.convertSourceSchema = this.getSchemaDisplayName(item.schemaType);
+    this.convertTargetSchema = this.getSchemaDisplayName(targetSchemaType);
+    this.openDialogBox(this.convertConfirmModal);
+  }
+
+  proceedConvert() {
+    this.closeDialogBox();
+    if (this.itemToConvert && this.convertTargetModal) {
+      this.convertSboms(this.itemToConvert, this.convertTargetModal);
+    }
+  }
+
+  convertSboms(item: UploadModel,modal: TemplateRef<any>) {
+    this.mergeMode = true;
     this.fileSaveSuccess = false;
     this.fileUploadSuccess = false;
     this.enableModalSave = false;
+    this.isLoading = true;
     this.sbomInputService.convertSbom(item).subscribe((data: UploadModel) => {
+      this.isLoading = false;
       this.fileToEdit = data;
       this.initializeUndefinedObjects();
+      this.openModal(modal);
       this.logAction(data, 'Convert');
     })
   }
@@ -872,6 +960,7 @@ export class SbomInputComponent {
       this.setChangeLogs(data.changeLogsList);
       this.fileToEdit.errorDetails = data.errorDetails;
       this.fileToEdit.fileHash = data.fileHash;
+      this.fileToEdit.lossEvent = data.lossEvent;
       const blob = new Blob([currentValue.replace(/ /g, ' ')], { type: 'text/json' });
       this.downloadFiles(blob);
     });
@@ -889,10 +978,11 @@ export class SbomInputComponent {
       i = 1;
     }
 
-    while (i < 4) {
+    while (i < 6) {
       var data: any;
       let fileName = downloadParams.fileName[i];
-      if (i < 3) {
+      content = null;
+      if (i < 5) {
         switch (i) {
           case 0:
             data = JSON.parse(JSON.stringify(this.fileToEdit.errorDetails));
@@ -907,28 +997,70 @@ export class SbomInputComponent {
             }
             break;
           case 3:
+            data = JSON.parse(JSON.stringify(this.fileToEdit.lossEvent));
+            break;
+          case 4:
+            data = JSON.parse(JSON.stringify(this.fileToEdit.conversionDeltas));
+            break;
+          case 5:
             if (!this.mergeMode) {
               fileName = this.fileToEdit.sbomFileName;
             }
             break;
         }
-        const pdfFile = new jsPDF("l", "cm", "a3");
-        autoTable(pdfFile, {
-          columns: downloadParams.header[i],
-          body: data
-        });
-        content = pdfFile.output('blob');
+        if(data !== null && data !== undefined && data.length > 0) {
+          const pdfFile = new jsPDF("l", "cm", "a3");
+          const tableOptions: any = {
+            columns: downloadParams.header[i],
+            body: data
+          };
+          // Loss event and conversion log tables can contain long paths/values; make them fit the printable page.
+          if (i === 3) {
+            tableOptions.styles = { overflow: 'linebreak', cellWidth: 'wrap', fontSize: 8, valign: 'top' };
+            tableOptions.headStyles = { overflow: 'linebreak' };
+            tableOptions.tableWidth = 'auto';
+            tableOptions.margin = { top: 1, right: 1, bottom: 1, left: 1 };
+            tableOptions.columnStyles = {
+              ruleId: { cellWidth: 4 },
+              severity: { cellWidth: 4 },
+              kind: { cellWidth: 4 },
+              sourcePath: { cellWidth: 6 },
+              sourceValue: { cellWidth: 6 },
+              targetPath: { cellWidth: 6 },
+              targetValue: { cellWidth: 6 },
+              reason: { cellWidth: 4 }
+            };
+          }
+          // Conversion log details can contain long paths/values; make the table fit the printable page.
+          if (i === 4) {
+            tableOptions.styles = { overflow: 'linebreak', cellWidth: 'wrap', fontSize: 8, valign: 'top' };
+            tableOptions.headStyles = { overflow: 'linebreak' };
+            tableOptions.tableWidth = 'auto';
+            tableOptions.margin = { top: 1, right: 1, bottom: 1, left: 1 };
+            tableOptions.columnStyles = {
+              sourcePath: { cellWidth: 8 },
+              targetPath: { cellWidth: 8 },
+              value: { cellWidth: 8 },
+              category: { cellWidth: 5 },
+              reason: { cellWidth: 8 },
+              ruleId: { cellWidth: 3 }
+            };
+          }
+          autoTable(pdfFile, tableOptions);
+          content = pdfFile.output('blob');
+        }
       } else {
         if (!this.mergeMode) {
           fileName = this.fileToEdit.sbomFileName;
         }
         content = blob;
       }
-
-      zipContent.push({
-        name: fileName,
-        content: content
-      })
+     if(content !== null && content !== undefined) {
+        zipContent.push({
+          name: fileName,
+          content: content
+        })
+     }
       i++;
     }
 
@@ -965,6 +1097,148 @@ export class SbomInputComponent {
     }
     for (var i = 0; i < totalFiles; i++) {
       addFileToZip(i);
+    }
+  }
+
+  /**
+   * Validates CDQ SPDX 2.3 merge form mandatory fields
+   */
+  validateCDQSpdxMergeForm(): boolean {
+    const validation = FormValidationUtil.validateCDQSpdxMergeForm(this.cdqSpdxMerged);
+    this.cdqSpdxInvalidFields.clear();
+
+    if (!validation.isValid) {
+      validation.emptyFields.forEach(field => {
+        this.cdqSpdxInvalidFields.add(field);
+      });
+    } else {
+      this.mergeFormValidationMessage = '';
+    }
+
+    return validation.isValid;
+  }
+
+  /**
+   * Validates SPDX merge form mandatory fields
+   */
+  validateSPDXMergeForm(): boolean {
+    const validation = FormValidationUtil.validateSPDXMergeForm(this.spdxMerged);
+    this.spdxInvalidFields.clear();
+
+    if (!validation.isValid) {
+      validation.emptyFields.forEach(field => {
+        this.spdxInvalidFields.add(field);
+      });
+    } else {
+      this.mergeFormValidationMessage = '';
+    }
+
+    return validation.isValid;
+  }
+
+  /**
+   * Validates CycloneDX merge form mandatory fields
+   */
+  validateCycloneDXMergeForm(): boolean {
+    const validation = FormValidationUtil.validateCycloneDXMergeForm(this.cdxMerged, this.mergeLicenseInfoType);
+    this.cycloneDXInvalidFields.clear();
+
+    if (!validation.isValid) {
+      validation.emptyFields.forEach(field => {
+        this.cycloneDXInvalidFields.add(field);
+      });
+      this.mergeFormValidationMessage = `Please fill in all mandatory fields: ${validation.emptyFields.join(', ')}`;
+    } else {
+      this.mergeFormValidationMessage = '';
+    }
+
+    return validation.isValid;
+  }
+
+  /**
+   * Validates CDQ CycloneDX merge form mandatory fields
+   */
+  validateCDQCycloneDXMergeForm(): boolean {
+    const validation = FormValidationUtil.validateCDQCycloneDXMergeForm(this.cdqCydxMerged);
+    this.cdqCycloneDXInvalidFields.clear();
+
+    if (!validation.isValid) {
+      validation.emptyFields.forEach(field => {
+        this.cdqCycloneDXInvalidFields.add(field);
+      });
+      const errorMessage = validation.emptyFields.map(field => {
+        if (field === 'authorsOrManufacturer') {
+          return 'either Authors Name or Manufacturer Name';
+        }
+        return field;
+      }).join(', ');
+    } else {
+      this.mergeFormValidationMessage = '';
+    }
+
+    return validation.isValid;
+  }
+
+  /**
+   * Checks if Authors Name field should be disabled (when Manufacturer Name is filled)
+   */
+  isAuthorsNameDisabled(): boolean {
+    const authorsName = this.cdqCydxMerged?.metadata?.authors?.[0]?.name;
+    return !FormValidationUtil.isEmpty(authorsName);
+  }
+
+  /**
+   * Checks if Manufacturer Name field should be disabled (when Authors Name is filled)
+   */
+  isManufacturerNameDisabled(): boolean {
+
+    const manufacturerName = this.cdqCydxMerged?.metadata?.manufacturer?.name;
+    return !FormValidationUtil.isEmpty(manufacturerName);
+  }
+
+  /**
+   * Checks if a specific field is invalid (used in template)
+   */
+  isFieldInvalid(fieldName: string, mergeType: string): boolean {
+    switch (mergeType) {
+      case 'cdqspdx2.3':
+        return this.cdqSpdxInvalidFields.has(fieldName);
+      case 'spdx':
+        return this.spdxInvalidFields.has(fieldName);
+      case 'cyclonedx':
+        return this.cycloneDXInvalidFields.has(fieldName);
+      case 'cdqcydx':
+        return this.cdqCycloneDXInvalidFields.has(fieldName);
+      default:
+        return false;
+    }
+  }
+
+  /**
+   * Validates the appropriate merge form based on merge type and performs merge if valid
+   */
+  validateAndMerge(modal: TemplateRef<any>): void {
+    let isValid = false;
+
+    switch (this.mergeType) {
+      case 'cdqspdx2.3':
+        isValid = this.validateCDQSpdxMergeForm();
+        break;
+      case 'spdx':
+        isValid = this.validateSPDXMergeForm();
+        break;
+      case 'cyclonedx':
+        isValid = this.validateCycloneDXMergeForm();
+        break;
+      case 'cdqcydx':
+        isValid = this.validateCDQCycloneDXMergeForm();
+        break;
+      default:
+        isValid = false;
+    }
+
+    if (isValid) {
+      this.mergeSelectedBoms(modal);
     }
   }
 

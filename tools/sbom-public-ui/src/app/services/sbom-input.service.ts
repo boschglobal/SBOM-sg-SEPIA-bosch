@@ -410,13 +410,14 @@ export class SbomInputService {
         cdqmetadata.authors = [];
         cdqmetadata.authors.push(cdqMetadataAuthors);
 
-        let cdqMetadataManufacturer = new CDQOrganizationalEntityObject();
-        cdqMetadataManufacturer.name = "";
+        // let cdqMetadataManufacturer = new CDQOrganizationalEntityObject();
+        // cdqMetadataManufacturer.name = "";
 
-        cdqmetadata.manufacturer = cdqMetadataManufacturer;
+        // cdqmetadata.manufacturer = cdqMetadataManufacturer;
         this.cdqCycloneDxModelToEdit.metadata = cdqmetadata;
     }else {
       let cdqmetadataVar: CDQBOMMetadata = new CDQBOMMetadata();
+      cdqmetadataVar = this.cdqCycloneDxModelToEdit.metadata;
       if (!this.cdqCycloneDxModelToEdit.metadata.timestamp) {
         cdqmetadataVar.timestamp = "";
       }else{
@@ -424,6 +425,7 @@ export class SbomInputService {
       }
       cdqmetadataVar.component = this.initializeCDQCydxMetaDataComponents();
       if (!this.cdqCycloneDxModelToEdit.metadata.licenses) {
+        cdqmetadataVar.licenses = [];
         cdqmetadataVar.licenses.push(this.initializeCDQCydxMetaDataLicense());
       } else {
         if (this.cdqCycloneDxModelToEdit.metadata.licenses.length > 0) {
@@ -446,9 +448,11 @@ export class SbomInputService {
         }
       }
       if (!this.cdqCycloneDxModelToEdit.metadata.manufacturer) {
-        let cdqMetadataManufacturer = new CDQOrganizationalEntityObject();
-        cdqMetadataManufacturer.name = "";
-        cdqmetadataVar.manufacturer = cdqMetadataManufacturer;
+        if (!this.cdqCycloneDxModelToEdit.metadata.authors) {
+            let cdqMetadataManufacturer = new CDQOrganizationalEntityObject();
+            cdqMetadataManufacturer.name = "";
+            cdqmetadataVar.manufacturer = cdqMetadataManufacturer;
+        }
       }else {
         cdqmetadataVar.manufacturer = this.cdqCycloneDxModelToEdit.metadata.manufacturer;
         if (!this.cdqCycloneDxModelToEdit.metadata.manufacturer.name) {
@@ -456,10 +460,12 @@ export class SbomInputService {
         }
       }
       if (!this.cdqCycloneDxModelToEdit.metadata.authors) {
-        let cdqMetadataAuthors = new CDQOrganizationalContactObject();
-        cdqMetadataAuthors.name = "";
-        cdqmetadataVar.authors = [];
-        cdqmetadataVar.authors.push(cdqMetadataAuthors);
+        if (!this.cdqCycloneDxModelToEdit.metadata.manufacturer) {
+           let cdqMetadataAuthors = new CDQOrganizationalContactObject();
+            cdqMetadataAuthors.name = "";
+            cdqmetadataVar.authors = [];
+            cdqmetadataVar.authors.push(cdqMetadataAuthors);
+        }
       }else {
         cdqmetadataVar.authors = this.initCDQMetadataAuthorsUndefinedObj(this.cdqCycloneDxModelToEdit.metadata.authors);
       }
@@ -604,6 +610,8 @@ export class SbomInputService {
       let cdqLicense = new CDQLicense();
       cdqLicense.name = "";
       cdqMetaComponentLicense.license = cdqLicense;
+
+      metadataComponent.licenses = [];
       metadataComponent.licenses.push(cdqMetaComponentLicense);
 
       let cdqMetaComponentExternalReference = new CDQExternalReference();
@@ -1264,7 +1272,7 @@ export class SbomInputService {
     },
     {
       "value": "licText",
-      "label": "License Text"
+      "label": "License Expression"
     }
   ]
 
@@ -1288,8 +1296,28 @@ export class SbomInputService {
     { title: "Error Message", dataKey: "message" }
   ];
 
+  lossEventListHeaders = [
+    { title: "Rule Id", dataKey: "ruleId" },
+    { title: "Severity", dataKey: "severity" },
+    { title: "Kind", dataKey: "kind" },
+    { title: "Source Path", dataKey: "sourcePath" },
+    { title: "Source Value", dataKey: "sourceValue" },
+    { title: "Target Path", dataKey: "targetPath" },
+    { title: "Target Value", dataKey: "targetValue" },
+    { title: "Reason", dataKey: "reason" }
+  ];
+
+  logDetails = [
+    { title: "Source Path", dataKey: "sourcePath" },
+    { title: "Target Path", dataKey: "targetPath" },
+    { title: "Value", dataKey: "value" },
+    { title: "Category", dataKey: "category" },
+    { title: "Reason", dataKey: "reason" },
+    { title: "Rule ID", dataKey: "ruleId" }
+  ];
+
   downloadParams = {
-    header: [this.errorListHeaders, this.changeLogHeaders, this.auditLogHeaders, undefined],
-    fileName: ['errorsList.pdf', 'changeLog.pdf', 'auditLog.pdf', 'mergedSbomContent.json']
+    header: [this.errorListHeaders, this.changeLogHeaders, this.auditLogHeaders,this.lossEventListHeaders,this.logDetails, undefined],
+    fileName: ['errorsList.pdf', 'changeLog.pdf', 'auditLog.pdf', 'lossEventList.pdf', 'conversionLogDetails.pdf', 'SbomContent.json']
   }
 }

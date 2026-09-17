@@ -1,6 +1,6 @@
-/*
-  Copyright © 2025 Robert Bosch GmbH. All rights reserved.
-*/
+/* SPDX-FileCopyrightText: Copyright (C) 2026 Contributors to SEPIA
+
+SPDX-License-Identifier: MIT */
 export class CDQCycloneDXSBOMStandard {
   bomFormat!: string;
   specVersion!: string;

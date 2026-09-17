@@ -1,3 +1,9 @@
+/*
+ Parts of this file are created by genAI by using GitHub Copilot.
+ This notice needs to remain attached to any reproduction of or excerpt from this file.
+// SPDX-FileCopyrightText: Copyright (C) 2026 Contributors to SEPIA
+// SPDX-License-Identifier: MIT
+*/
 export const cdq_spdx_2_3_schema = {
   "$id+": "http://spdx.org/rdf/terms/2.3",
   "title": "SPDX Software Bill of Materials Standard",
@@ -96,8 +102,7 @@ export const cdq_spdx_2_3_schema = {
       "examples": [
         "CC0-1.0"
       ],
-      "type": "string",
-      "pattern": "\\S"
+      "type": "string"
     },
     "externalDocumentRefs": {
       "description": "Identify any external SPDX documents referenced within this SPDX document.",
@@ -483,8 +488,7 @@ export const cdq_spdx_2_3_schema = {
             "examples": [
               "http://spdx.org/licenses/LGPL-2.0-only"
             ],
-            "type": "string",
-            "pattern": "\\S"
+            "type": "string"
           },
           "licenseDeclared": {
             "description": "License expression for licenseDeclared. See SPDX Annex D for the license expression syntax.  The licensing that the creators of the software in the package, or the packager, have declared. Declarations by the original software creator should be preferred, if they exist.",
@@ -605,8 +609,7 @@ export const cdq_spdx_2_3_schema = {
           "name",
           "versionInfo",
           "primaryPackagePurpose",
-          "externalRefs",
-          "licenseConcluded"
+          "externalRefs"
         ],
         "additionalProperties": false
       }
@@ -1044,7 +1047,6 @@ export const cdq_spdx_2_3_schema = {
   "required": [
     "spdxVersion",
     "documentNamespace",
-    "dataLicense",
     "creationInfo",
     "packages"
   ],
