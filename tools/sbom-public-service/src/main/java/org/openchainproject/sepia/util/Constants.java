@@ -33,6 +33,9 @@ public class Constants {
 	public static final String CDX_14 = "cdx14";
 	public static final String SPDX_23 = "spdx23";
 	
+	public static final String VER2_3 = "2.3";
+	public static final String VER1_6 = "1.6";
+	
 	public static final String UTF_8 = "UTF-8";
 	public static final String UNDERSCORE = "_";
 	public static final String ZERO = "0";
@@ -81,4 +84,6 @@ public class Constants {
 	public static final String UNKNOWN = "[UNKNOWN]";
 	public static final String RDFXML = "rdf.xml";
 	public static final String SYMBOLS = "^\"|\"$";
+	
+	public static final String EXTERNAL_SCHEMA_DEFINITIONS = "externalSchemaDefinitions/";
 }

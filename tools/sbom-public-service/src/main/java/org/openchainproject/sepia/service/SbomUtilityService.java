@@ -115,5 +115,8 @@ public interface SbomUtilityService {
 			String manifestContent, BomFilesInputModel sbomInputModel);
 
 	Set<String> manifestFileValidate(String schemaType, MultipartFile manifestFile) throws Exception;
+
+	BomFilesInputModel validateAndConvertFromAPI(Optional<MultipartFile> inputFile,
+			BomFilesInputModel sbomInputModel);
  
 }

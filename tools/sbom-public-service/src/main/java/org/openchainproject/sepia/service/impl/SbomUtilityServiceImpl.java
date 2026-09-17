@@ -41,6 +41,8 @@ import org.openchainproject.sepia.model.ChangeLog;
 import org.openchainproject.sepia.model.CycloneDx14Manifest;
 import org.openchainproject.sepia.model.ErrorModel;
 import org.openchainproject.sepia.model.Spdx23Manifest;
+import org.openchainproject.sepia.registry.SpdxLicenseRegistry;
+import org.openchainproject.sepia.service.ConversionService;
 import org.openchainproject.sepia.service.SbomUtilityService;
 import org.openchainproject.sepia.util.Constants;
 import org.openchainproject.sepia.util.JsonPathFinder;
@@ -54,6 +56,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -65,6 +68,7 @@ import com.networknt.schema.SchemaValidatorsConfig;
 import com.networknt.schema.SpecVersion;
 import com.networknt.schema.SpecVersion.VersionFlag;
 import com.networknt.schema.ValidationMessage;
+import org.openchainproject.sepia.model.CDQCycloneDx16Manifest.LicenseWrapper;
 import org.openchainproject.sepia.model.CDQCycloneDx16Manifest;
 
 @Service
@@ -80,7 +84,13 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 	
 	@Autowired
 	private SbomFileUtils sbomFileUtils;
+
+	@Autowired
+	private SpdxLicenseRegistry spdxLicenseRegistry;
 	
+	@Autowired
+	private ConversionService service;
+
 	
 	/**
 	 * 
@@ -215,7 +225,7 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 				}
 				File[] rootPathFiles = rootDirectory.listFiles();
 
-				if (rootPathFiles.length > 0) {
+				if (rootPathFiles != null && rootPathFiles.length > 0) {
 					for (File curDir : rootPathFiles) {
 						if (curDir.getName().startsWith(sbomInputModel.getIndex() + Constants.UNDERSCORE)) {
 							sbomFileUtils.sanitizeDirectory(curDir, sbomInputModel);
@@ -274,7 +284,7 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 			if (sourceDirectorySubFolders.length > 0) {
 				for (File currentIndexDirectory : sourceDirectorySubFolders) {
 					if (!currentIndexDirectory.getName().contains("_deleted")) {
-						setValuesForBomFileInput(currentIndexDirectory);
+						bomFilesInputList.add(setValuesForBomFileInput(currentIndexDirectory));
 					}
 
 				}
@@ -532,6 +542,158 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 		return bomFilesInputList;
 	
 	}
+	
+	@Override 
+	public BomFilesInputModel validateAndConvertFromAPI(Optional<MultipartFile> inputFile, BomFilesInputModel sbomInputModel) {
+		BomFilesInputModel bomFilesInputModel = null;
+		BomFilesInputModel sbomConvertedModel = new BomFilesInputModel();
+		boolean isConvertPossible = true;
+		try {
+				MultipartFile file = inputFile.get();
+				VersionFlag versionFlag = null;
+				String schemaFileName = null;
+				ObjectMapper mapper = new ObjectMapper();
+				
+				JsonSchemaFactory schemaFactory = null;
+				InputStream schemaStream = null;
+				InputStream inputJsonStream = null;
+				JsonNode json = null;
+				JsonSchema schema = null;
+				
+				bomFilesInputModel = new BomFilesInputModel();
+				String schemaType = sbomInputModel.getSchemaType();
+				bomFilesInputModel.setSchemaType(schemaType);
+				bomFilesInputModel.setSbomFile(file);
+				bomFilesInputModel.setSbomJsonString(new String(file.getBytes(), StandardCharsets.UTF_8));
+			    bomFilesInputModel.setSbomFileName(file.getOriginalFilename());
+			    
+				if (!StringUtils.isEmpty(schemaType)) {
+					if (schemaType.equalsIgnoreCase(Constants.CYCLONEDX_LC)) {
+						versionFlag = SpecVersion.VersionFlag.V7;
+						schemaFileName = "/cyclonedx_1.4.schema.json";
+					} else if (schemaType.equalsIgnoreCase(Constants.SPDX_LC)) {
+						versionFlag = SpecVersion.VersionFlag.V201909;
+						schemaFileName = "/spdx_2.3.schema.json";
+					} else if (schemaType.equalsIgnoreCase(Constants.SPDX2_2_LC)) {
+						versionFlag = SpecVersion.VersionFlag.V7;
+						schemaFileName = "/spdx_2.2.schema.json";
+					} else if (schemaType.equalsIgnoreCase(Constants.CDQ_SPDX2_3_LC)) {
+						versionFlag = SpecVersion.VersionFlag.V201909;
+						schemaFileName = "/CDQspdx_2.3.schema.json";
+					}  else if (schemaType.equalsIgnoreCase(Constants.CDQ_CYDX1_6_LC)) {
+						versionFlag = SpecVersion.VersionFlag.V7;
+						schemaFileName = "/CDQcyclonedx_1.6.json";
+					} 
+					else if (schemaType.equalsIgnoreCase(Constants.CUSTOM)) {
+						String schemaJsonString = bomFilesInputModel.getSchemaJsonString();
+						schemaStream = new ByteArrayInputStream(schemaJsonString.getBytes(StandardCharsets.UTF_8));
+						JsonNode schemaJsonNode = mapper.readTree(schemaJsonString);
+						String schemaParameter = schemaJsonNode.get(Constants.DOLLAR_SCHEMA) != null
+								? schemaJsonNode.get(Constants.DOLLAR_SCHEMA).toString()
+								: null;
+						versionFlag = schemaParameter != null
+								? getCustomSchemaVersion(schemaParameter.replaceAll("^\"|\"$", ""))
+								: null;
+					}
+				}
+				if (!schemaType.equalsIgnoreCase(Constants.CUSTOM)) {
+					schemaStream = getClass().getResourceAsStream(schemaFileName);
+				}
+				if (versionFlag != null) {
+					schemaFactory = JsonSchemaFactory.getInstance(versionFlag);
+					inputJsonStream = new ByteArrayInputStream(
+							bomFilesInputModel.getSbomJsonString().getBytes(StandardCharsets.UTF_8));
+					json = mapper.readTree(inputJsonStream);
+					SchemaValidatorsConfig config = SchemaValidatorsConfig.builder()
+							.cacheRefs(false)
+							.preloadJsonSchema(false)
+							.build();
+					schema = schemaFactory.getSchema(schemaStream, config);
+
+					Set<ValidationMessage> validationResult = schema.validate(json);
+					bomFilesInputModel.setValid(validationResult.isEmpty());
+					
+					if (schemaType.equalsIgnoreCase(Constants.CYCLONEDX_LC)) {
+						List<String> bomRefDupePaths = JsonPathFinder.findRepetitionPaths(json, "bom-ref");
+						bomFilesInputModel.setValid(
+								bomFilesInputModel.isValid() && (bomRefDupePaths == null || bomRefDupePaths.isEmpty()));
+						List<ErrorModel> errList = new ArrayList<>();
+						List<ErrorModel> customErrs = new ArrayList<>();
+						for (String path : bomRefDupePaths) {
+							errList.add(new ErrorModel(path, "Duplicate 'bom-ref' value found", null));
+							if (!StringUtils.isEmpty(path)) {
+								String[] pathArr = path.replace("$.", "").replaceAll("[\\[]", ".")
+										.replaceAll("[\\]]", "").split("\\.");
+								customErrs.add(new ErrorModel(null, "Duplicate 'bom-ref' value found", pathArr));
+							}
+						}
+						bomFilesInputModel.setErrorDetails(errList);
+						bomFilesInputModel.setCustomErrorDetails(customErrs);
+					}
+					List<ErrorModel> duplicateSpdxIdsList = null;
+					if (schemaType.equalsIgnoreCase(Constants.SPDX_LC)) {
+						duplicateSpdxIdsList = checkDuplicateSpdxId(bomFilesInputModel.getSbomJsonString());
+						bomFilesInputModel.setValid(bomFilesInputModel.isValid() && duplicateSpdxIdsList.isEmpty());
+					}
+					if (!bomFilesInputModel.isValid()) {
+						List<ErrorModel> errList = bomFilesInputModel.getErrorDetails();
+						if (errList == null) {
+							errList = new ArrayList<>();
+						}
+						errList.addAll(validationResult.stream().map(v -> v.getMessage().split(":"))
+								.map(error -> new ErrorModel(error[0], error[1], null)).collect(Collectors.toList()));
+						bomFilesInputModel.setErrorDetails(errList);
+
+						if (duplicateSpdxIdsList != null && !duplicateSpdxIdsList.isEmpty()) {
+							bomFilesInputModel.addErrorModel(duplicateSpdxIdsList);
+							bomFilesInputModel.setCustomErrorDetails(duplicateSpdxIdsList);
+						}
+
+					}
+
+
+				}else {
+					bomFilesInputModel.setValid(false);
+
+					ErrorModel errorModel = new ErrorModel("SCHEMA", "The provided schema is invalid", null);
+					List<ErrorModel> errorModelList = new ArrayList<>();
+					errorModelList.add(errorModel);
+
+					bomFilesInputModel.setErrorDetails(errorModelList);
+				}
+				
+				int errorCount = bomFilesInputModel.getErrorDetails() == null ? 0 : bomFilesInputModel.getErrorDetails().size();
+				if (errorCount == 0) {
+					bomFilesInputModel.setMessage("File uploaded successfully and validation is completed without any errors");
+				} else {
+					isConvertPossible = false;
+					bomFilesInputModel.setMessage("File uploaded successfully and validation is completed with " + errorCount + " errors");
+				}
+
+			if(isConvertPossible) {
+				ObjectNode source = (ObjectNode) mapper.readTree(bomFilesInputModel.getSbomJsonString());
+				if(bomFilesInputModel.getSchemaType().equalsIgnoreCase(Constants.CDQ_CYDX1_6_LC)) {
+					sbomConvertedModel = service.convert(source,Constants.CYCLONEDX_LC,Constants.VER1_6,Constants.SPDX_LC,Constants.VER2_3);
+					sbomConvertedModel.setSchemaType(Constants.CDQ_SPDX2_3_LC);
+					sbomConvertedModel.setSchemaVersion("2.3");
+					sbomConvertedModel = validateSboms(sbomConvertedModel, true, false);
+				}else {
+					sbomConvertedModel = service.convert(source,Constants.SPDX_LC,Constants.VER2_3,Constants.CYCLONEDX_LC,Constants.VER1_6);
+					sbomConvertedModel.setSchemaType(Constants.CDQ_CYDX1_6_LC);
+					sbomConvertedModel.setSchemaVersion("2.3");
+					sbomConvertedModel = validateSboms(sbomConvertedModel, true, false);
+				}
+				
+			}
+		} catch (Exception e) {
+			LOGGER.error("Exception occured while validation the Sbom file", e);
+			bomFilesInputModel.setMessage("Error:" + e.getMessage());
+			bomFilesInputModel.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+		}
+		return sbomConvertedModel;
+	
+	}
+
 
 	/**
 	 * @param bomFilesInputModel
@@ -966,7 +1128,7 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 				}
 
 				if (schemaType.equalsIgnoreCase(Constants.SPDX_LC) || schemaType.equalsIgnoreCase(Constants.CDQ_SPDX2_3_LC)) {
-					bomFileInput = SbomMergeUtil.mergeSPDXBoms(bomNodes, bomMetadata, isFromApp);
+					bomFileInput = SbomMergeUtil.mergeSPDXBoms(bomNodes, bomMetadata, isFromApp,schemaType);
 				} else if (schemaType.equalsIgnoreCase(Constants.CYCLONEDX_LC)) {
 					Version cycloneDxVersion = getCycloneDxOutputFileVersion("v1_4");
 					String rootPath = sbomUploadPath + timestamp;
@@ -1288,39 +1450,47 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
         switch (schemaType.toLowerCase()) {
 
             case Constants.CDQ_CYDX1_6_LC:
-
-                manifestObject = mapper.readValue(
-                        file.getInputStream(),
-                        CDQCycloneDx16Manifest.class
-                );
-
-                break;
+               try {
+            	   manifestObject = mapper.readValue(
+                           file.getInputStream(),
+                           CDQCycloneDx16Manifest.class
+                   );
+			   } catch (JsonProcessingException ex) {
+            	    return ex.getMessage().lines().collect(Collectors.toSet());
+               }
+               break;
 
             case Constants.CYCLONEDX_LC:
-
-                manifestObject = mapper.readValue(
-                        file.getInputStream(),
-                        CycloneDx14Manifest.class
-                );
-
-                break;
+               try {
+            	   manifestObject = mapper.readValue(
+                           file.getInputStream(),
+                           CycloneDx14Manifest.class
+                   );
+				  } catch (JsonProcessingException ex) {
+           	         return ex.getMessage().lines().collect(Collectors.toSet());
+                  }
+              break;
            
             case Constants.CDQ_SPDX2_3_LC:
-
+            	try {
                 manifestObject = mapper.readValue(
                         file.getInputStream(),
                         CDQSpdx23Manifest.class
-                );
-
+                 );
+	            } catch (JsonProcessingException ex) {
+          	         return ex.getMessage().lines().collect(Collectors.toSet());
+                 }
                 break;
                 
             case Constants.SPDX_LC:
-
-                manifestObject = mapper.readValue(
-                        file.getInputStream(),
-                        Spdx23Manifest.class
-                );
-
+            	try {
+                    manifestObject = mapper.readValue(
+                            file.getInputStream(),
+                            Spdx23Manifest.class
+                    );
+	            } catch (JsonProcessingException ex) {
+         	         return ex.getMessage().lines().collect(Collectors.toSet());
+                }
                 break;    
 
             default:
@@ -1343,7 +1513,48 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
             );
         }
 
+        validateCycloneDxLicenses(manifestObject, schemaType, errors);
+        
         return errors;
     }
+
+	private void validateCycloneDxLicenses(Object manifestObject, String schemaType, Set<String> errors) {
+		if (schemaType == null || manifestObject == null) {
+			return;
+		}
+
+		switch (schemaType.toLowerCase()) {
+		case Constants.CDQ_CYDX1_6_LC:
+			CDQCycloneDx16Manifest cdqManifest = (CDQCycloneDx16Manifest) manifestObject;
+			if (cdqManifest.getMetadata() == null
+					|| cdqManifest.getMetadata().getComponent() == null
+					|| cdqManifest.getMetadata().getComponent().getLicenses() == null) {
+				return;
+			}
+			for (LicenseWrapper wrapper : cdqManifest.getMetadata().getComponent().getLicenses()) {
+				String id = wrapper.getLicense() != null ? wrapper.getLicense().getId() : null;
+				if (id != null && !spdxLicenseRegistry.isValidLicense(id, schemaType)) {
+					errors.add("Invalid SPDX license: " + id);
+				}
+			}
+			break;
+		case Constants.CYCLONEDX_LC:
+			CycloneDx14Manifest cycloneManifest = (CycloneDx14Manifest) manifestObject;
+			if (cycloneManifest.getMetadata() == null
+					|| cycloneManifest.getMetadata().getComponent() == null
+					|| cycloneManifest.getMetadata().getComponent().getLicenses() == null) {
+				return;
+			}
+			for (CycloneDx14Manifest.LicenseWrapper wrapper : cycloneManifest.getMetadata().getComponent().getLicenses()) {
+				String id = wrapper.getLicense() != null ? wrapper.getLicense().getId() : null;
+				if (!spdxLicenseRegistry.isValidLicense(id, schemaType)) {
+					errors.add("Invalid SPDX license: " + id);
+				}
+			}
+			break;
+		default:
+			break;
+		}
+	}
 	
 }

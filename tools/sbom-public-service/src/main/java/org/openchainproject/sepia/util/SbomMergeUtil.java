@@ -37,6 +37,7 @@ import org.cyclonedx.model.Hash.Algorithm;
 import org.cyclonedx.model.License;
 import org.cyclonedx.model.LicenseChoice;
 import org.cyclonedx.model.Metadata;
+import org.cyclonedx.model.OrganizationalContact;
 import org.cyclonedx.model.Property;
 import org.cyclonedx.model.Service;
 import org.cyclonedx.model.Signature;
@@ -293,7 +294,7 @@ public class SbomMergeUtil {
 		bomFilesInputModel.setChangeLogsList(changeLogsList);
 		
 		if(!isFromApp) {
-			bomFilesInputModel.setSbomJson(mergedBom);
+			bomFilesInputModel.setSbomJson(BomGeneratorFactory.createJson(version, mergedBom).toJsonNode());
 		}
 		
 		return bomFilesInputModel;
@@ -330,22 +331,23 @@ public class SbomMergeUtil {
 			tools.setComponents(toolsComponentsList);
 			metadata.setToolChoice(tools);
 
+			// Enforce mutual exclusion: if authors[0].name is present, remove manufacturer;
+			// otherwise keep manufacturer as-is.
+			List<OrganizationalContact> metadataAuthors = metadata.getAuthors();
+			if (metadataAuthors != null && !metadataAuthors.isEmpty()
+					&& StringUtils.isNotBlank(metadataAuthors.get(0).getName())) {
+				metadata.setManufacturer(null);
+			}else {
+				metadata.setAuthors(null);
+			}
+
 			String metaCompBomRef = getMetaCompBomRef(component);
 			component.setBomRef(metaCompBomRef);
 			changeLogsList = addChangeLog(changeLogsList, getMetaCompBomRef(component), Constants.MERGED_FILE,
 					"$.metadata.component.bom-ref", Constants.ADD, Constants.CDQ_CYDX1_6_LC);
 
-			List<License> licenseList = new ArrayList<>();
-			License license = new License();
-			license.setId("CC-BY-4.0");
-			licenseList.add(license);
-
-			LicenseChoice licenseChoice = new LicenseChoice();
-			licenseChoice.setLicenses(licenseList);
-
 			metadata.setComponent(component);
 			metadata.setTimestamp(new Date());
-			metadata.setLicenseChoice(licenseChoice);
 			mergedBom.setMetadata(metadata);
 			mergedBom.setSerialNumber(serialNumber);
 		}
@@ -550,7 +552,7 @@ public class SbomMergeUtil {
 		bomFilesInputModel.setChangeLogsList(changeLogsList);
 
 		if (!isFromApp) {
-			bomFilesInputModel.setSbomJson(mergedBom);
+			bomFilesInputModel.setSbomJson(BomGeneratorFactory.createJson(version, mergedBom).toJsonNode());
 		}
 		
 		return bomFilesInputModel;
@@ -1082,7 +1084,7 @@ public class SbomMergeUtil {
 	 * replacing with new SPDXID if there is any duplicates SPDXID in Packages,
 	 * files, snippet. Info recorded in the changeLog
 	 */
-	public static BomFilesInputModel mergeSPDXBoms(List<ObjectNode> bomNodes, String bomMetadata, boolean isFromApp) throws Exception {
+	public static BomFilesInputModel mergeSPDXBoms(List<ObjectNode> bomNodes, String bomMetadata, boolean isFromApp,String schemaType) throws Exception {
 		LOGGER.info("Inside the Service Implementation Method - mergeSPDXBoms()");
 		ObjectMapper mapper = new ObjectMapper();
 		ObjectNode mergedSpdxBomNode = mapper.createObjectNode();
@@ -1107,8 +1109,11 @@ public class SbomMergeUtil {
 			String metaPackageSpdxID = null;
 			mergedFileSpdxID = "SPDX-Merged_Result-" + SbomFileUtils.generateUuid() + "#SPDXRef-DOCUMENT";
 			mergedSpdxBomNode.put(Constants.SPDXID, mergedFileSpdxID);
-			mergedSpdxBomNode.put(Constants.SPDX_VERSION, "2.3");
-			mergedSpdxBomNode.put(Constants.DATALICENSE, "CCBY4.0");
+			mergedSpdxBomNode.put(Constants.SPDX_VERSION, "SPDX-2.3");
+			
+			if(!schemaType.equalsIgnoreCase(Constants.CDQ_SPDX2_3_LC)) {
+				mergedSpdxBomNode.put(Constants.DATALICENSE, "CCBY4.0");
+			} 
 
 			mergedSpdxBomNode.put(Constants.DOCUMENT_NAMESPACE ,
 					"http://spdx.org/spdxdocs/" + (mergedFileSpdxID.substring(0, mergedFileSpdxID.indexOf("#"))));
@@ -1154,7 +1159,9 @@ public class SbomMergeUtil {
 
 				ArrayNode bomSpdxPackagesNode = (ArrayNode) bomNode.get(Constants.PACKAGES);
 				if (bomSpdxPackagesNode != null && !bomSpdxPackagesNode.isNull()) {
-					for (JsonNode packageNode : bomSpdxPackagesNode) {
+					for (int pi = 0; pi < bomSpdxPackagesNode.size(); pi++) {
+						LOGGER.info("Inside the bomNodes" + pi);
+						JsonNode packageNode = bomSpdxPackagesNode.get(pi);
 						String spdxID = packageNode.get(Constants.SPDXID) != null ? packageNode.get(Constants.SPDXID).asText() : null;
 						String newSpdxId;
 						if (spdxID != null) {
@@ -1162,14 +1169,18 @@ public class SbomMergeUtil {
 								packageSpdxIdSet.add(spdxID);
 								inputSpdxIdList.add(spdxID);
 							} else {
+								// The package is located at $.packages[pi]; build the SPDXID path directly
+								// instead of re-serializing and scanning the whole bomNode (same result).
+								String packagePath = "$." + Constants.PACKAGES + "[" + pi + "]." + Constants.SPDXID;
 								newSpdxId = generateNewSpdxId(packageNode, packageSpdxIdSet, bomNode, Constants.REPLACE,
-										changeLogsList, spdxID);
+										changeLogsList, spdxID, packagePath);
 								spdxIdMap.put(spdxID, newSpdxId);
 								inputSpdxIdList.add(newSpdxId);
 							}
 						} else {
+							String packagePath = "$." + Constants.PACKAGES + "[" + pi + "]." + Constants.SPDXID;
 							newSpdxId = generateNewSpdxId(packageNode, packageSpdxIdSet, bomNode, Constants.ADD, changeLogsList,
-									spdxID);
+									spdxID, packagePath);
 							inputSpdxIdList.add(newSpdxId);
 						}
 						mergedpackagesNode.add(packageNode);
@@ -1188,20 +1199,26 @@ public class SbomMergeUtil {
 				// files
 				ArrayNode bomFiles = (ArrayNode) bomNode.get(Constants.FILES);
 				if (bomFiles != null && !bomFiles.isNull()) {
-					for (JsonNode filesNode : bomFiles) {
+					for (int fi = 0; fi < bomFiles.size(); fi++) {
+						LOGGER.info("Inside the files" + fi);
+						JsonNode filesNode = bomFiles.get(fi);
 						String filesSpdxID = filesNode.get(Constants.SPDXID) != null ? filesNode.get(Constants.SPDXID).asText() : null;
 						String newFilesSpdxId;
 						if (filesSpdxID != null) {
 							if (!filesSpdxIdSet.contains(filesSpdxID)) {
 								filesSpdxIdSet.add(filesSpdxID);
 							} else {
+								// The file is located at $.files[fi]; build the SPDXID path directly
+								// instead of re-serializing and scanning the whole bomNode (same result).
+								String filePath = "$." + Constants.FILES + "[" + fi + "]." + Constants.SPDXID;
 								newFilesSpdxId = generateNewSpdxId(filesNode, filesSpdxIdSet, bomNode, Constants.REPLACE,
-										changeLogsList, filesSpdxID);
+										changeLogsList, filesSpdxID, filePath);
 								spdxIdMap.put(filesSpdxID, newFilesSpdxId);
 							}
 						} else {
+							String filePath = "$." + Constants.FILES + "[" + fi + "]." + Constants.SPDXID;
 							newFilesSpdxId = generateNewSpdxId(filesNode, filesSpdxIdSet, bomNode, Constants.ADD,
-									changeLogsList, filesSpdxID);
+									changeLogsList, filesSpdxID, filePath);
 						} 
 						mergedFiles.add(filesNode);
 					}
@@ -1210,10 +1227,13 @@ public class SbomMergeUtil {
 				// snippets
 				ArrayNode bomSnippets = (ArrayNode) bomNode.get(Constants.SNIPPETS);
 				if (bomSnippets != null && !bomSnippets.isNull()) {
-					for (JsonNode snippetsNode : bomSnippets) {
+					for (int si = 0; si < bomSnippets.size(); si++) {
+						LOGGER.info("Inside the snippets" + si);
+						JsonNode snippetsNode = bomSnippets.get(si);
 						ArrayNode snippetsRanges = (ArrayNode) snippetsNode.get(Constants.RANGES);
 						if (snippetsRanges != null && !snippetsRanges.isNull()) {
-							for (JsonNode ranges : snippetsRanges) {
+							for (int ri = 0; ri < snippetsRanges.size(); ri++) {
+								JsonNode ranges = snippetsRanges.get(ri);
 								ObjectNode rangesEndPointer = (ObjectNode) ranges.get(Constants.END_POINTER);
 								if (rangesEndPointer != null && !rangesEndPointer.isNull()) {
 									String endPointerReference = (rangesEndPointer.get(Constants.REFERENCE) != null
@@ -1222,9 +1242,10 @@ public class SbomMergeUtil {
 									if (spdxIdMap.containsKey(endPointerReference)) {
 										((ObjectNode) rangesEndPointer).put(Constants.REFERENCE,
 												spdxIdMap.get(endPointerReference));
-										String path = JsonPathFinder.getPath(
-												new JSONObject(mapper.writeValueAsString(bomNode)), Constants.REFERENCE,
-												rangesEndPointer.toString(), true);
+										// The reference is located at $.snippets[si].ranges[ri].endPointer.reference;
+										// build the path directly instead of re-serializing and scanning the whole bomNode.
+										String path = "$." + Constants.SNIPPETS + "[" + si + "]." + Constants.RANGES + "[" + ri + "]."
+												+ Constants.END_POINTER + "." + Constants.REFERENCE;
 										changeLogsList = addChangeLog(changeLogsList,
 												spdxIdMap.get(endPointerReference), endPointerReference,
 												bomNode.get(Constants.FILE_NAME).toString(), path,
@@ -1240,10 +1261,8 @@ public class SbomMergeUtil {
 									if (spdxIdMap.containsKey(startPointerReference)) {
 										((ObjectNode) rangesStartPointer).put(Constants.REFERENCE,
 												spdxIdMap.get(startPointerReference));
-										String path = JsonPathFinder.getPath(
-												new JSONObject(mapper.writeValueAsString(bomNode)), Constants.REFERENCE,
-												rangesStartPointer.toString(), true);
-										  
+										String path = "$." + Constants.SNIPPETS + "[" + si + "]." + Constants.RANGES + "[" + ri + "]."
+												+ Constants.START_POINTER + "." + Constants.REFERENCE;
 										changeLogsList = addChangeLog(changeLogsList, getNewValueForChangeLog(spdxIdMap.get(startPointerReference), startPointerReference), bomNode.get(Constants.FILE_NAME).toString(), path, Constants.REPLACE, Constants.SPDX); // "snippets->ranges->startPointer->reference"
 									}
 								}
@@ -1255,9 +1274,8 @@ public class SbomMergeUtil {
 								: null);
 						if (spdxIdMap.containsKey(snippetFromFile)) {
 							((ObjectNode) snippetsNode).put(Constants.SNIPPET_FROM_FILE, spdxIdMap.get(snippetFromFile));
-							String path = JsonPathFinder.getPath(new JSONObject(mapper.writeValueAsString(bomNode)),
-									Constants.SNIPPET_FROM_FILE, spdxIdMap.get(snippetFromFile), false);
-							
+							String path = "$." + Constants.SNIPPETS + "[" + si + "]." + Constants.SNIPPET_FROM_FILE;
+
 							changeLogsList = addChangeLog(changeLogsList, getNewValueForChangeLog(spdxIdMap.get(snippetFromFile),
 									snippetFromFile), bomNode.get(Constants.FILE_NAME).toString(), path, Constants.REPLACE, Constants.SPDX); // "snippets->snippetFromFile"
 						}
@@ -1269,13 +1287,15 @@ public class SbomMergeUtil {
 							if (!snippetSpdxIdSet.contains(snippetSpdxId)) {
 								snippetSpdxIdSet.add(snippetSpdxId);
 							} else {
+								String snippetPath = "$." + Constants.SNIPPETS + "[" + si + "]." + Constants.SPDXID;
 								newSnippetSpdxId = generateNewSpdxId(snippetsNode, snippetSpdxIdSet, bomNode, Constants.REPLACE,
-										changeLogsList, snippetSpdxId);
+										changeLogsList, snippetSpdxId, snippetPath);
 								spdxIdMap.put(snippetSpdxId, newSnippetSpdxId);
 							}
 						} else {
+							String snippetPath = "$." + Constants.SNIPPETS + "[" + si + "]." + Constants.SPDXID;
 							newSnippetSpdxId = generateNewSpdxId(snippetsNode, snippetSpdxIdSet, bomNode, Constants.ADD,
-									changeLogsList, snippetSpdxId);
+									changeLogsList, snippetSpdxId, snippetPath);
 						}
 						mergedSnippets.add(snippetsNode);
 					}
@@ -1286,6 +1306,7 @@ public class SbomMergeUtil {
 				String metaPackageSpdxIDInput = metaPackageSpdxID;
 				// relationships between new merged file and each packages from Input files
 				for (int i = 0; i < inputSpdxIdList.size(); i++) {
+					LOGGER.info("Inside the // relationships-" + i);
 					ObjectNode newRelationships = mapper.createObjectNode();
 					((ObjectNode) newRelationships).put(Constants.SPDX_ELEMENT_ID, metaPackageSpdxIDInput);
 					((ObjectNode) newRelationships).put(Constants.RELATIONSHIP_TYPE, Constants.CONTAINS);
@@ -1299,7 +1320,11 @@ public class SbomMergeUtil {
 				// relationships from Input Files
 				ArrayNode bomRelationships = (ArrayNode) bomNode.get(Constants.RELATIONSHIPS);
 				if (bomRelationships != null && !bomRelationships.isNull()) {
-					for (JsonNode relationshipsNode : bomRelationships) {
+					// Resolve the file name once per bomNode instead of per relationship.
+					String relationshipFileName = bomNode.get(Constants.FILE_NAME).toString();
+					for (int r = 0; r < bomRelationships.size(); r++) {
+						LOGGER.info("Inside the // relationships-" + r);
+						JsonNode relationshipsNode = bomRelationships.get(r);
 						String spdxElementId = (relationshipsNode.get(Constants.SPDX_ELEMENT_ID) != null
 								? relationshipsNode.get(Constants.SPDX_ELEMENT_ID).asText()
 								: null);
@@ -1308,25 +1333,25 @@ public class SbomMergeUtil {
 								: null);
 						if (spdxIdMap.containsKey(spdxElementId)) {
 							((ObjectNode) relationshipsNode).put(Constants.SPDX_ELEMENT_ID, spdxIdMap.get(spdxElementId));
-							String path = JsonPathFinder.getPath(new JSONObject(mapper.writeValueAsString(bomNode)),
-									Constants.SPDX_ELEMENT_ID, relationshipsNode.toString(), true);
+							// The relationship is located at $.relationships[r]; build the path directly
+							// instead of re-serializing and scanning the whole bomNode (same result).
+							String path = "$." + Constants.RELATIONSHIPS + "[" + r + "]." + Constants.SPDX_ELEMENT_ID;
 							changeLogsList = addChangeLog(changeLogsList, getNewValueForChangeLog(spdxIdMap.get(spdxElementId), spdxElementId),
-									bomNode.get(Constants.FILE_NAME).toString(), path, Constants.REPLACE, Constants.SPDX); // relationships->spdxElementId
+									relationshipFileName, path, Constants.REPLACE, Constants.SPDX); // relationships->spdxElementId
 						}
 						if (spdxIdMap.containsKey(relatedSpdxElement)) {
 							((ObjectNode) relationshipsNode).put(Constants.RELATED_SPDX_ELEMENT,
 									spdxIdMap.get(relatedSpdxElement));
-							String path = JsonPathFinder.getPath(new JSONObject(mapper.writeValueAsString(bomNode)),
-									Constants.RELATED_SPDX_ELEMENT, relationshipsNode.toString(), true);
+							String path = "$." + Constants.RELATIONSHIPS + "[" + r + "]." + Constants.RELATED_SPDX_ELEMENT;
 							changeLogsList = addChangeLog(changeLogsList, getNewValueForChangeLog(spdxIdMap.get(relatedSpdxElement),
-									relatedSpdxElement), bomNode.get(Constants.FILE_NAME).toString(), path,
+									relatedSpdxElement), relationshipFileName, path,
 									Constants.REPLACE, Constants.SPDX); // "relationships->relatedSpdxElement"
 						}
 						mergedRelationships.add(relationshipsNode);
 					}
 				}
 			}
-
+			LOGGER.info("merge completed");
 			String mergedBomJsonString = mapper.writeValueAsString(mergedSpdxBomNode);
 			bomFilesInputModel.setSbomJsonString(mergedBomJsonString);
 			if(!isFromApp) {
@@ -1349,6 +1374,7 @@ public class SbomMergeUtil {
 	 * @param tempBomNode
 	 */
 	private static void mergeDiffSpdxObectsNode(String property, ArrayNode mergedBomPropertyNode, ObjectNode tempBomNode) {
+		LOGGER.info("Inside the mergeDiffSpdxObectsNode() method");
 		ArrayNode bomPropertyNode = (ArrayNode) tempBomNode.get(property);
 		if (bomPropertyNode != null && !bomPropertyNode.isNull()) {
 			for (JsonNode propertyNode : bomPropertyNode) {
@@ -1383,6 +1409,24 @@ public class SbomMergeUtil {
 			LOGGER.error("An exception occured Inside generateNewSpdxId() >> {}", e);
 			e.printStackTrace();
 		}
+		changeLogsList = addChangeLog(changeLogsList, getNewValueForChangeLog(newSpdxId, spdxID), tempBomNode.get(Constants.FILE_NAME).toString(), path,
+				action, Constants.SPDX);
+		return newSpdxId;
+	}
+
+	/**
+	 * Optimized variant of generateNewSpdxId for callers that already know the JSON
+	 * path of the property node (e.g. the files array index). This avoids serializing
+	 * and scanning the entire bomNode via JsonPathFinder.getPath, which is prohibitively
+	 * expensive for very large SBOMs (e.g. hundreds of thousands of files). The generated
+	 * SPDXID is unique, so the path discovered by getPath is always the caller-supplied
+	 * one; behaviour is therefore identical to the path-discovering overload.
+	 */
+	private static String generateNewSpdxId(JsonNode propertyNode, Set<String> propertySpdxIdSet, ObjectNode tempBomNode,
+			String action, List<ChangeLog> changeLogsList, String spdxID, String path) {
+		String newSpdxId = "SPDXRef-Package" + SbomFileUtils.generateUuid();
+		((ObjectNode) propertyNode).put(Constants.SPDXID, newSpdxId);
+		propertySpdxIdSet.add(newSpdxId);
 		changeLogsList = addChangeLog(changeLogsList, getNewValueForChangeLog(newSpdxId, spdxID), tempBomNode.get(Constants.FILE_NAME).toString(), path,
 				action, Constants.SPDX);
 		return newSpdxId;

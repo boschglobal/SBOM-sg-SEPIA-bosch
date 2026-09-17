@@ -1,6 +1,15 @@
+/*
+ Parts of this file are created by genAI by using GitHub Copilot. 
+ This notice needs to remain attached to any reproduction of or excerpt from this file.
+ */
+
+// SPDX-FileCopyrightText: Copyright (C) 2026 Contributors to SEPIA
+//
+// SPDX-License-Identifier: MIT
 package org.openchainproject.sepia.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotEmpty;
@@ -66,6 +75,53 @@ public class CDQSpdx23Manifest {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class PackageInfo {
+    	
+        public enum primaryPackagePurposeType {
+        	@JsonProperty("APPLICATION")
+            APPLICATION("APPLICATION"),
+            @JsonProperty("ARCHIVE")
+            ARCHIVE("ARCHIVE"),
+            @JsonProperty("CONTAINER")
+            CONTAINER("CONTAINER"),
+            @JsonProperty("DEVICE")
+            DEVICE("DEVICE"),
+            @JsonProperty("FILE")
+            FILE("FILE"),
+            @JsonProperty("FIRMWARE")
+            FIRMWARE("FIRMWARE"),
+            @JsonProperty("FRAMEWORK")
+            FRAMEWORK("FRAMEWORK"),
+            @JsonProperty("INSTALL")
+            INSTALL("INSTALL"),
+            @JsonProperty("LIBRARY")
+            LIBRARY("LIBRARY"),
+            @JsonProperty("OPERATING_SYSTEM")
+            OPERATING_SYSTEM("OPERATING_SYSTEM"),
+            @JsonProperty("SOURCE")
+            SOURCE("SOURCE"),
+            @JsonProperty("OTHER")
+            OTHER("OTHER");
+
+
+            private final String name;
+
+            public String getTypeName() {
+                return this.name;
+            }
+
+            primaryPackagePurposeType(String name) {
+                this.name = name;
+            }
+
+            public static primaryPackagePurposeType fromString(String text) {
+                for (primaryPackagePurposeType t : primaryPackagePurposeType.values()) {
+                    if (t.name.equals(text)) {
+                        return t;
+                    }
+                }
+                return null;
+            }
+        }
 
         @Valid
         @NotEmpty(message = "package.externalRefs is mandatory")
@@ -77,10 +133,10 @@ public class CDQSpdx23Manifest {
         @NotBlank(message = "package.versionInfo is mandatory")
         private String versionInfo;
 
-        @NotBlank(message = "package.primaryPackagePurpose is mandatory")
-        private String primaryPackagePurpose;
+        @NotNull(message = "package.primaryPackagePurpose is mandatory")
+        private primaryPackagePurposeType primaryPackagePurpose;
 
-        @NotBlank(message = "package.licenseConcluded is mandatory")
+        
         private String licenseConcluded;
 
         // =====================================================
@@ -111,11 +167,11 @@ public class CDQSpdx23Manifest {
             this.versionInfo = versionInfo;
         }
 
-        public String getPrimaryPackagePurpose() {
+        public primaryPackagePurposeType getPrimaryPackagePurpose() {
             return primaryPackagePurpose;
         }
 
-        public void setPrimaryPackagePurpose(String primaryPackagePurpose) {
+        public void setPrimaryPackagePurpose(primaryPackagePurposeType primaryPackagePurpose) {
             this.primaryPackagePurpose = primaryPackagePurpose;
         }
 
@@ -135,17 +191,57 @@ public class CDQSpdx23Manifest {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ExternalRef {
 
-        @NotBlank(message =
+        public enum externalRefCategory {
+            
+            @JsonProperty("OTHER")
+            OTHER("OTHER"),
+
+            @JsonProperty("PERSISTENT-ID")
+            PERSISTENT_ID_HYPHEN("PERSISTENT-ID"),
+
+            @JsonProperty("PERSISTENT_ID")
+            PERSISTENT_ID_UNDERSCORE("PERSISTENT_ID"),
+
+            @JsonProperty("SECURITY")
+            SECURITY("SECURITY"),
+
+            @JsonProperty("PACKAGE-MANAGER")
+            PACKAGE_MANAGER_HYPHEN("PACKAGE-MANAGER"),
+
+            @JsonProperty("PACKAGE_MANAGER")
+            PACKAGE_MANAGER_UNDERSCORE("PACKAGE_MANAGER");
+
+            private final String name;
+
+            public String getTypeName() {
+                return this.name;
+            }
+
+            externalRefCategory(String name) {
+                this.name = name;
+            }
+
+            public static externalRefCategory fromString(String text) {
+                for (externalRefCategory t : externalRefCategory.values()) {
+                    if (t.name.equals(text)) {
+                        return t;
+                    }
+                }
+                return null;
+            }
+        }
+    	
+        @NotNull(message =
                 "externalRef.referenceCategory is mandatory")
-        private String referenceCategory;
+        private externalRefCategory referenceCategory;
 
         // Getter Setter
 
-        public String getReferenceCategory() {
+        public externalRefCategory getReferenceCategory() {
             return referenceCategory;
         }
 
-        public void setReferenceCategory(String referenceCategory) {
+        public void setReferenceCategory(externalRefCategory referenceCategory) {
             this.referenceCategory = referenceCategory;
         }
     }

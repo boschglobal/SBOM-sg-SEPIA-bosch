@@ -120,4 +120,10 @@ public class BomFilesInputModel {
 	
 	@ApiModelProperty(required = false)
 	private Integer status;
+	
+	@ApiModelProperty(required = false)
+	private List<org.openchainproject.sepia.loss.LossEvent> lossEvent = new ArrayList<>();
+	
+	@ApiModelProperty(required = false)
+	private List<org.openchainproject.sepia.loss.ConversionDelta> conversionDeltas = new ArrayList<>();
 }

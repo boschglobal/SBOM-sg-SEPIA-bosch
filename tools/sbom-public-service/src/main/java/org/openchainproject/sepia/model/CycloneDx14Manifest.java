@@ -1,11 +1,24 @@
+/*
+ Parts of this file are created by genAI by using GitHub Copilot. 
+ This notice needs to remain attached to any reproduction of or excerpt from this file.
+ */
+
+// SPDX-FileCopyrightText: Copyright (C) 2026 Contributors to SEPIA
+//
+// SPDX-License-Identifier: MIT
 package org.openchainproject.sepia.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.validation.Valid;
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
+
+import org.cyclonedx.Version;
+import org.cyclonedx.model.VersionFilter;
 
 import java.util.List;
 
@@ -69,6 +82,49 @@ public class CycloneDx14Manifest {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Component {
 
+        public enum Type {
+            @JsonProperty("application")
+            APPLICATION("application"),
+            @JsonProperty("framework")
+            FRAMEWORK("framework"),
+            @JsonProperty("library")
+            LIBRARY("library"),
+            @JsonProperty("container")
+            CONTAINER("container"),
+            @JsonProperty("operating-system")
+            OPERATING_SYSTEM("operating-system"),
+            @JsonProperty("device")
+            DEVICE("device"),
+            @JsonProperty("firmware")
+            FIRMWARE("firmware"),
+            @JsonProperty("file")
+            FILE("file");
+
+            private final String name;
+
+            public String getTypeName() {
+                return this.name;
+            }
+
+            Type(String name) {
+                this.name = name;
+            }
+            
+            @JsonCreator
+            public static Type fromValue(String value) {
+
+                for (Type type : Type.values()) {
+                    if (type.name.equalsIgnoreCase(value)) {
+                        return type;
+                    }
+                }
+
+                throw new IllegalArgumentException(
+                    "Invalid component type: " + value
+                );
+            }
+        }
+        
         @Valid
         @NotEmpty(message = "component.licenses is mandatory")
         private List<LicenseWrapper> licenses;
@@ -79,8 +135,8 @@ public class CycloneDx14Manifest {
         @NotBlank(message = "component.group is mandatory")
         private String group;
 
-        @NotBlank(message = "component.type is mandatory")
-        private String type;
+        @NotNull(message = "component.type is mandatory")
+        private Type type;
 
         @NotBlank(message = "component.version is mandatory")
         private String version;
@@ -113,11 +169,11 @@ public class CycloneDx14Manifest {
             this.group = group;
         }
 
-        public String getType() {
+        public Type getType() {
             return type;
         }
 
-        public void setType(String type) {
+        public void setType(Type type) {
             this.type = type;
         }
 

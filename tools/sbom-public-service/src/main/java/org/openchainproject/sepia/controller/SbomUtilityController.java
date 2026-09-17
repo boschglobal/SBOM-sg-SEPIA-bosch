@@ -1,3 +1,7 @@
+/*
+ Parts of this file are created by genAI by using GitHub Copilot. 
+ This notice needs to remain attached to any reproduction of or excerpt from this file.
+ */
 // SPDX-FileCopyrightText: Copyright (C) 2025 Contributors to SEPIA
 //
 // SPDX-License-Identifier: MIT
@@ -19,8 +23,8 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.compress.utils.IOUtils;
 import org.openchainproject.sepia.model.BomFilesInputModel;
 import org.openchainproject.sepia.model.ChangeLog;
+import org.openchainproject.sepia.service.ConversionService;
 import org.openchainproject.sepia.service.SbomUtilityService;
-import org.openchainproject.sepia.util.Constants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +37,7 @@ import org.springframework.util.ResourceUtils;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -46,7 +51,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.swagger.annotations.ApiOperation;
 import springfox.documentation.annotations.ApiIgnore;
-
+import org.openchainproject.sepia.util.Constants;
 import javax.validation.Validation;
 import javax.validation.Validator;
 import javax.validation.ValidatorFactory;
@@ -69,7 +74,8 @@ public class SbomUtilityController {
 	@Autowired
 	private SbomUtilityService sbomUtilityService;
 	
-	
+	@Autowired
+	private ConversionService service;
 
     
 	
@@ -162,9 +168,10 @@ public class SbomUtilityController {
 		} catch (Exception e) {
 			LOGGER.error("Exception occurred while the given information inside validateSboms()", e);
 	        if (sbomInputModel == null) {
-	            throw new NullPointerException("sbomInputModel is null due to an error during deserialization or validation.");
+	        	sbomInputModel = new BomFilesInputModel();
+	            //throw new NullPointerException("sbomInputModel is null due to an error during deserialization or validation.");
 	        }
-			sbomInputModel.setMessage("Error uploading file: " + e.getMessage());
+			sbomInputModel.setMessage("An error occurred during validation. Please check your input file.");
 			sbomInputModel.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
 		}
 
@@ -255,6 +262,36 @@ public class SbomUtilityController {
 		return mergedBomInput;
 	}
 	
+	@ApiOperation(value = "covert SBOMs")
+	@PostMapping("/convertSbom")
+	public BomFilesInputModel convertSbom(@RequestParam("postData") String postData,@RequestParam(value = "isFromApp", required = false) boolean isFromApp) {
+		BomFilesInputModel sbomInputModel = new BomFilesInputModel();
+		BomFilesInputModel sbomConvertedModel = new BomFilesInputModel();
+		try {
+			ObjectMapper mapper = new ObjectMapper();
+			
+			sbomInputModel = mapper.readValue(postData, BomFilesInputModel.class);
+			ObjectNode source = (ObjectNode) mapper.readTree(sbomInputModel.getSbomJsonString());
+			if(sbomInputModel.getSchemaType().equalsIgnoreCase(Constants.CDQ_CYDX1_6_LC)) {
+				sbomConvertedModel = service.convert(source,Constants.CYCLONEDX_LC,Constants.VER1_6,Constants.SPDX_LC,Constants.VER2_3);
+				sbomConvertedModel.setSchemaType(Constants.CDQ_SPDX2_3_LC);
+				sbomConvertedModel.setSchemaVersion("2.3");
+				sbomConvertedModel = sbomUtilityService.validateSboms(sbomConvertedModel, true, false);
+				
+			}else {
+				sbomConvertedModel = service.convert(source,Constants.SPDX_LC,Constants.VER2_3,Constants.CYCLONEDX_LC,Constants.VER1_6);
+				sbomConvertedModel.setSchemaType(Constants.CDQ_CYDX1_6_LC);
+				sbomConvertedModel.setSchemaVersion("2.3");
+				sbomConvertedModel = sbomUtilityService.validateSboms(sbomConvertedModel, true, false);
+				
+			}
+			
+		} catch (Exception e) {
+			LOGGER.error("Exception occurred while the given information inside convertSbom()", e);
+		}
+
+		return sbomConvertedModel;
+	}
 	
 
 	@ApiIgnore
@@ -536,6 +573,90 @@ public class SbomUtilityController {
 			responseNode.remove("schemaJsonString");
 			return responseNode;
 		}
+	
+	@ApiOperation(value = "Upload BOM files for Convert operation through API")
+	@PostMapping(path = "/validateAndConvert", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ObjectNode validateAndConvert(
+			   @RequestParam("file") Optional<MultipartFile> inputFile,
+			   @RequestParam("postData") String postData) {
+		       
+		       BomFilesInputModel sbomInputModel = null;
+		       BomFilesInputModel sbomConvertedModel = new BomFilesInputModel();
+		       ObjectMapper mapper = new ObjectMapper();
+		       try {
+		    	   sbomInputModel = mapper.readValue(postData, BomFilesInputModel.class);
+		    	   
+				   // --- Input validation -------------------------------------------------
+				   // 1) Validate schemaType
+				   String schemaType = sbomInputModel.getSchemaType();
+				   List<String> allowedSchemaTypes = java.util.Arrays.asList(
+						   Constants.CDQ_SPDX2_3_LC,      // "cdqspdx2.3"
+						   Constants.CDQ_CYDX1_6_LC       // "cdqcydx"
+				   );
+				   boolean schemaTypeValid = schemaType != null
+						   && allowedSchemaTypes.stream().anyMatch(s -> s.equalsIgnoreCase(schemaType));
+				   if (!schemaTypeValid) {
+					   return buildUploadErrorResponse(mapper, sbomInputModel,
+							   "Invalid schemaType '" + schemaType + "'. Allowed values: " + allowedSchemaTypes);
+				   }
+				   
+				   // 2) Validate all uploaded files are .json files
+				   if (!inputFile.isPresent() || inputFile.get().isEmpty()) {
+					   return buildUploadErrorResponse(mapper, sbomInputModel,
+							   "No files uploaded for convert operation.");
+				   }
+				   
+				   MultipartFile file = inputFile.get();
+				   String uploadedFileName = file != null ? file.getOriginalFilename() : null;
+				   if (uploadedFileName == null || uploadedFileName.trim().isEmpty()) {
+					   uploadedFileName = sbomInputModel.getSbomFileName();
+				   }
+				   if (uploadedFileName == null || !uploadedFileName.toLowerCase().endsWith(".json")) {
+					   return buildUploadErrorResponse(mapper, sbomInputModel,
+							   "Invalid file '" + uploadedFileName + ". Only .json files are accepted for upload.");
+				   }
+				   // 3) Validate that the JSON content actually matches the declared schemaType
+				   String contentMismatch = null;
+				   try {
+					   // Use a single-file Optional for validation helper
+					   MultipartFile[] singleFileArr = new MultipartFile[] { file };
+					   contentMismatch = validateSbomContentMatchesSchemaType(mapper, Optional.of(singleFileArr), schemaType);
+				   } catch (Exception ex) {
+					   contentMismatch = "Error reading file '" + uploadedFileName + ex.getMessage();
+				   }
+				   if (contentMismatch != null) {
+					   return buildUploadErrorResponse(mapper, sbomInputModel,
+							   "File '" + uploadedFileName  + " failed in schemaType validation: " + contentMismatch);
+				   }
+				   
+				   sbomConvertedModel = sbomUtilityService.validateAndConvertFromAPI(inputFile, sbomInputModel);
+		    	   
+		       } catch (Exception e) {
+				   LOGGER.error("Exception occurred while the given information inside validateAndConvert()", e);
+				   return buildUploadErrorResponse(mapper, sbomInputModel,
+						   "Error processing uploaded file: " + e.getMessage());
+			   }
+		        // Hide internal fields from the /customValidate response
+		        boolean hasValid = false;
+				ObjectNode responseNode = mapper.valueToTree(sbomConvertedModel);
+				responseNode.remove("schema");
+				responseNode.remove("filePath");
+				responseNode.remove("validatedAlready");
+				responseNode.remove("status");
+				responseNode.remove("schemaJsonString");
+				responseNode.remove("sbomJsonString");
+				// Check if any model is invalid
+				if (sbomConvertedModel != null && sbomConvertedModel.getSbomFileName() != null) {
+					hasValid = true;
+				}
+				if (hasValid) {
+					responseNode.put("message", "Convert operation is successful and converted SBOM available in sbomJson property of the response. Refer lossEvent,conversionDeltas,errorDetails properties for more details");
+				} else {
+					responseNode.put("message", "Convert operation is failed due to invalid file");
+				}
+				return responseNode;
+		
+	}
 		
 		   @ApiOperation(value = "Upload multiple BOM files for merge operation")
 		   @PostMapping(path = "/validateAndMerge", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -684,7 +805,7 @@ public class SbomUtilityController {
 	    	Set<String> errors =
 	    			sbomUtilityService.manifestFileValidate(schemaType, manifestFile);
 	        if (!errors.isEmpty()) {
-	        	return "Manifest file is missing : " + errors;
+	        	return "Manifest file is invalid : " + errors;
 	        }
 	    } catch (Exception e) {
 	        return "Manifest file is not a valid JSON document: " + e.getMessage();
