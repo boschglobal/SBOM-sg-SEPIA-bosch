@@ -1,0 +1,440 @@
+[
+  {
+    "id": 1,
+    "section": "document",
+    "source": "bom.metadata.properties[0].[name:\"spdx:spdxid\"]",
+    "target": "document.SPDXID"
+  },
+  {
+    "id": 2,
+    "section": "document",
+    "source": "bom.metadata.properties[2].[name:\"spdx:comment\"]",
+    "target": "document.comment"
+  },
+  {
+    "id": 3,
+    "section": "document",
+    "source": "bom.metadata.properties[3].[name:\"spdx:document:name\"]",
+    "target": "document.name"
+  },
+  {
+    "id": 4,
+    "section": "document",
+    "source": "bom.metadata.properties[4].[name:\"spdx:document:document-namespace\"]",
+    "target": "document.documentNamespace"
+  },
+  {
+    "id": 5,
+    "section": "document",
+    "source": "bom.metadata.timestamp",
+    "target": "document.creationInfo.created"
+  },
+  {
+    "id": 6,
+    "section": "document",
+    "source": "bom.metadata.properties[5].[name:\"spdx:creation-info:comment\"]",
+    "target": "document.creationInfo.comment"
+  },
+  {
+    "id": 7,
+    "section": "document",
+    "source": "bom.metadata.properties[6].[name:\"spdx:creation-info:license-list-version\"]",
+    "target": "document.creationInfo.licenseListVersion"
+  },
+  {
+    "id": 8,
+    "section": "document",
+    "source": "bom.metadata.properties[7].[name:\"spdx:document:external-document-ref\"]",
+    "target": "document.externalDocumentRefs[0]"
+  },
+  {
+    "id": 9,
+    "section": "document",
+    "source": "bom.metadata.properties[12].[name:\"spdx:annotation:comment\"]",
+    "target": "document.annotations[0].comment"
+  },
+  {
+    "id": 10,
+    "section": "document",
+    "source": "bom.metadata.properties[13].[name:\"spdx:annotation:annotator\"]",
+    "target": "document.annotations[0].annotator"
+  },
+  {
+    "id": 11,
+    "section": "document",
+    "source": "bom.metadata.properties[11].[name:\"spdx:document:describes\"]",
+    "target": "document.documentDescribes[]"
+  },
+  {
+    "id": 12,
+    "section": "document",
+    "source": "bom.metadata.component.name",
+    "target": "document.name"
+  },
+  {
+    "id": 13,
+    "section": "document",
+    "source": "bom.metadata.component.version",
+    "target": "document.packages[0].versionInfo"
+  },
+  {
+    "id": 14,
+    "section": "document",
+    "source": "bom.metadata.component.group",
+    "target": "document.name"
+  },
+  {
+    "id": 15,
+    "section": "document",
+    "source": "bom.serialNumber",
+    "target": "document.documentNamespace"
+  },
+  {
+    "id": 16,
+    "section": "document",
+    "source": "bom.metadata.timestamp",
+    "target": "document.creationInfo.created"
+  },
+  {
+    "id": 17,
+    "section": "document",
+    "source": "bom.metadata.authors[0].name",
+    "target": "document.creationInfo.creators[]"
+  },
+  {
+    "id": 18,
+    "section": "component-package",
+    "source": "bom.components[0].name",
+    "target": "document.packages[0].name"
+  },
+  {
+    "id": 19,
+    "section": "component-package",
+    "source": "bom.components[0].version",
+    "target": "document.packages[0].versionInfo"
+  },
+  {
+    "id": 20,
+    "section": "component-package",
+    "source": "bom.components[0].description",
+    "target": "document.packages[0].description"
+  },
+  {
+    "id": 21,
+    "section": "component-package",
+    "source": "bom.components[0].copyright",
+    "target": "document.packages[0].copyrightText"
+  },
+  {
+    "id": 22,
+    "section": "component-package",
+    "source": "bom.components[0].properties[0].[name:\"spdx:spdxid\"]",
+    "target": "document.packages[0].SPDXID"
+  },
+  {
+    "id": 23,
+    "section": "component-package",
+    "source": "bom.components[0].properties[18].[name:\"spdx:annotation\"]",
+    "target": "document.packages[0].annotations[]"
+  },
+  {
+    "id": 24,
+    "section": "component-package",
+    "source": "bom.components[0].properties[1].[name:\"spdx:files-analyzed\"]",
+    "target": "document.packages[0].filesAnalyzed"
+  },
+  {
+    "id": 25,
+    "section": "component-package",
+    "source": "bom.components[0].properties[2].[name:\"spdx:license-comments\"]",
+    "target": "document.packages[0].licenseComments"
+  },
+  {
+    "id": 26,
+    "section": "component-package",
+    "source": "bom.components[0].properties[4].[name:\"spdx:package:file-name\"]",
+    "target": "document.packages[0].packageFileName"
+  },
+  {
+    "id": 27,
+    "section": "component-package",
+    "source": "bom.components[0].properties[3].[name:\"spdx:license-concluded\"]",
+    "target": "document.packages[0].licenseConcluded"
+  },
+  {
+    "id": 28,
+    "section": "component-package",
+    "source": "bom.components[0].properties[10].[name:\"spdx:package:built-date\"]",
+    "target": "document.packages[0].builtDate"
+  },
+  {
+    "id": 29,
+    "section": "component-package",
+    "source": "bom.components[0].properties[11].[name:\"spdx:package:release-date\"]",
+    "target": "document.packages[0].releaseDate"
+  },
+  {
+    "id": 30,
+    "section": "component-package",
+    "source": "bom.components[0].properties[12].[name:\"spdx:package:valid-until-date\"]",
+    "target": "document.packages[0].validUntilDate"
+  },
+  {
+    "id": 31,
+    "section": "component-package",
+    "source": "bom.components[0].properties[5].[name:\"spdx:package:verification-code:value\"]",
+    "target": "document.packages[0].packageVerificationCode.packageVerificationCodeValue"
+  },
+  {
+    "id": 32,
+    "section": "component-package",
+    "source": "bom.components[0].properties[6].[name:\"spdx:package:verification-code:excluded-file\"]",
+    "target": "document.packages[0].packageVerificationCode.packageVerificationCodeExcludedFiles[]"
+  },
+  {
+    "id": 33,
+    "section": "component-package",
+    "source": "bom.components[0].properties[7].[name:\"spdx:package:source-info\"]",
+    "target": "document.packages[0].sourceInfo"
+  },
+  {
+    "id": 34,
+    "section": "component-package",
+    "source": "bom.components[0].properties[8].[name:\"spdx:package:summary\"]",
+    "target": "document.packages[0].summary"
+  },
+  {
+    "id": 35,
+    "section": "component-package",
+    "source": "bom.components[0].properties[9].[name:\"spdx:comment\"]",
+    "target": "document.packages[0].comment"
+  },
+  {
+    "id": 36,
+    "section": "component-package",
+    "source": "bom.components[0].evidence.licenses[].license.id",
+    "target": "document.packages[0].licenseInfoFromFiles[]"
+  },
+  {
+    "id": 37,
+    "section": "component-package",
+    "source": "bom.components[0].evidence.licenses[].license.name",
+    "target": "document.packages[0].licenseInfoFromFiles[]"
+  },
+  {
+    "id": 38,
+    "section": "component-package",
+    "source": "bom.components[0].properties[13].[name:\"spdx:license-declared\"]",
+    "target": "document.packages[0].licenseDeclared"
+  },
+  {
+    "id": 40,
+    "section": "component-package",
+    "source": "bom.components[0].properties[14].[name:\"spdx:package:originator\"]",
+    "target": "document.packages[0].originator"
+  },
+  {
+    "id": 41,
+    "section": "component-package",
+    "source": "bom.components[0].properties[15].[name:\"spdx:package:supplier\"]",
+    "target": "document.packages[0].supplier"
+  },
+  {
+    "id": 42,
+    "section": "component-package",
+    "source": "bom.components[0].evidence.copyright[0].text",
+    "target": "document.packages[0].attributionTexts[]"
+  },
+  {
+    "id": 43,
+    "section": "component-package",
+    "source": "bom.components[0].hashes[0]",
+    "target": "document.packages[0].checksums[]"
+  },
+  {
+    "id": 44,
+    "section": "component-package",
+    "source": "bom.components[0].properties[19].[name:\"spdx:external-reference:*\"]",
+    "target": "document.packages[0].externalRefs[]"
+  },
+  {
+    "id": 46,
+    "section": "component-package",
+    "source": "bom.components[0].properties[20].[name:\"spdx:package:supplier\"]",
+    "target": "document.packages[0].supplier"
+  },
+  {
+    "id": 47,
+    "section": "component-package",
+    "source": "bom.components[0].properties[21].[name:\"spdx:package:primary-package-purpose\"]",
+    "target": "document.packages[0].primaryPackagePurpose"
+  },
+  {
+    "id": 48,
+    "section": "component-package",
+    "source": "bom.components[0].properties[22].[name:\"spdx:package:summary\"]",
+    "target": "document.packages[0].summary"
+  },
+  {
+    "id": 49,
+    "section": "component-package",
+    "source": "bom.components[0].evidence.copyright[0].text",
+    "target": "document.packages[0].attributionTexts[]"
+  },
+  {
+    "id": 50,
+    "section": "component-package",
+    "source": "bom.components[0].properties[23].[name:\"spdx:package:source-info\"]",
+    "target": "document.packages[0].sourceInfo"
+  },
+  {
+    "id": 51,
+    "section": "component-package",
+    "source": "bom.components[0].purl",
+    "target": "document.packages[0].externalRefs[0].referenceLocator"
+  },
+  {
+    "id": 52,
+    "section": "component-package",
+    "source": "bom.components[0].properties[16].[name:\"spdx:download-location\"]",
+    "target": "document.packages[0].downloadLocation"
+  },
+  {
+    "id": 53,
+    "section": "component-package",
+    "source": "bom.components[0].properties[17].[name:\"spdx:homepage\"]",
+    "target": "document.packages[0].homepage"
+  },
+  {
+    "id": 54,
+    "section": "files",
+    "source": "bom.components[1].name",
+    "target": "document.files[0].fileName"
+  },
+  {
+    "id": 55,
+    "section": "files",
+    "source": "bom.components[1].properties[0].[name:\"spdx:spdxid\"]",
+    "target": "document.files[0].SPDXID"
+  },
+  {
+    "id": 56,
+    "section": "files",
+    "source": "bom.components[1].properties[1].[name:\"spdx:comment\"]",
+    "target": "document.files[0].comment"
+  },
+  {
+    "id": 57,
+    "section": "files",
+    "source": "bom.components[1].properties[7].[name:\"spdx:annotation\"]",
+    "target": "document.files[0].annotations[]"
+  },
+  {
+    "id": 58,
+    "section": "files",
+    "source": "bom.components[1].properties[3].[name:\"spdx:license-comments\"]",
+    "target": "document.files[0].licenseComments"
+  },
+  {
+    "id": 59,
+    "section": "files",
+    "source": "bom.components[1].evidence.copyright[0].text",
+    "target": "document.files[0].attributionTexts[]"
+  },
+  {
+    "id": 60,
+    "section": "files",
+    "source": "bom.components[1].properties[5].[name:\"spdx:file:contributor\"]",
+    "target": "document.files[0].fileContributors[]"
+  },
+  {
+    "id": 61,
+    "section": "files",
+    "source": "bom.components[1].properties[6].[name:\"spdx:file:notice-text\"]",
+    "target": "document.files[0].noticeText"
+  },
+  {
+    "id": 62,
+    "section": "files",
+    "source": "bom.components[1].copyright",
+    "target": "document.files[0].copyrightText"
+  },
+  {
+    "id": 63,
+    "section": "files",
+    "source": "bom.components[1].properties[4].[name:\"spdx:license-concluded\"]",
+    "target": "document.files[0].licenseConcluded"
+  },
+  {
+    "id": 64,
+    "section": "files",
+    "source": "bom.components[1].properties[2].properties[\"spdx:filetype\"]",
+    "target": "document.files[0].fileTypes[]"
+  },
+  {
+    "id": 65,
+    "section": "files",
+    "source": "bom.components[1].hashes[0]",
+    "target": "document.files[0].checksums[]"
+  },
+  {
+    "id": 66,
+    "section": "component-package",
+    "source": "bom.components[0].licenses[0].license.id",
+    "target": "document.packages[0].licenseDeclared"
+  },
+  {
+    "id": 67,
+    "section": "component-package",
+    "source": "bom.components[0].bom-ref",
+    "target": "document.packages[0].SPDXID"
+  },
+  {
+    "id": 68,
+    "section": "document",
+    "source": "bom.metadata.component.type",
+    "target": "document.packages[0].primaryPackagePurpose"
+  },
+  {
+    "id": 69,
+    "section": "document",
+    "source": "bom.metadata.supplier.name",
+    "target": "document.creationInfo.creators[]"
+  },
+  {
+    "id": 70,
+    "section": "document",
+    "source": "bom.metadata.component.purl",
+    "target": "document.packages[0].externalRefs[]"
+  },
+  {
+    "id": 71,
+    "section": "document",
+    "source": "bom.metadata.tools.components[0].name",
+    "target": "document.creationInfo.creators[]"
+  },
+  {
+    "id": 72,
+    "section": "document",
+    "source": "bom.metadata.manufacturer.name",
+    "target": "document.creationInfo.creators[]"
+  },
+  {
+    "id": 73,
+    "section": "component-package",
+    "source": "bom.components[0].cpe",
+    "target": "document.packages[0].externalRefs[0].referenceLocator"
+  },
+  {
+    "id": 74,
+    "section": "component-package",
+    "source": "bom.dependencies[0].ref",
+    "target": "document.relationships[0].spdxElementId"
+  },
+  {
+    "id": 75,
+    "section": "component-package",
+    "source": "bom.dependencies[0].dependsOn",
+    "target": "document.relationships[0].relatedSpdxElement"
+  }
+]
