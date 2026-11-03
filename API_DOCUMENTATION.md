@@ -199,7 +199,7 @@ Validates two or more uploaded SBOM files of the same format, then merges the va
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `file` | File | Yes | Two or more `.json` SBOM files. Each file's content must be a JSON object and match the selected format/version. |
-| `manifestFile` | File | No | A single `.json` file describing the merged SBOM metadata. When present it must be a valid JSON document and pass schema-type-specific manifest validation. |
+| `manifestFile` | File | Yes | A single `.json` file describing the merged SBOM metadata. When present it must be a valid JSON document and pass schema-type-specific manifest validation. |
 | `postData` | Text | Yes | JSON-encoded model containing at least `schemaType`. |
 
 Accepted `schemaType` values and content checks:
