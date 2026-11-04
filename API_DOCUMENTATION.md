@@ -64,12 +64,14 @@ Accepted `schemaType` values and content checks:
 
 The filename must end in `.json` (case-insensitive). The controller checks the uploaded document's top-level format/version before handing it to the validator. This endpoint does not accept the automotive or custom schema types, even though other service code supports additional types.
 
+The `sessionId` specify the User session identifier(Optional).
+
 ### Example
 
 ```bash
 curl -X POST "$BASE_URL/uploadAndValidate" \
   -F 'file=@./sbom.json;type=application/json' \
-  -F 'postData={"schemaType":"cdqcydx"}'
+  -F 'postData={"schemaType":"cdqcydx","sessionId":"your-session-id"}'
 ```
 
 ### Response

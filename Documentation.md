@@ -60,7 +60,7 @@ curl --noproxy localhost \
   | `spdx` | SPDX v2.3 |
   | `cdqspdx2.3` | SEPIA SPDX v2.3 |
 
-- **`USER_NTID`** – User session identifier(Optional).
+- **`sessionId`** – User session identifier(Optional).
 
 - **`SBOM_File_Path`** – Path to the SBOM file to be uploaded.
 
@@ -87,7 +87,7 @@ curl --noproxy localhost \
 ```bash
 curl --noproxy localhost \
      --location "API_PATH" \
-     --form "postData={\"schemaType\":\"custom\",\"sessionId\":\"USER_NTID\"}" \
+     --form "postData={\"schemaType\":\"custom\"}" \
      --form "file=@SBOM_File_Path" --form "schemaFile=@Schema_File_Path"
 ```
 
@@ -104,8 +104,6 @@ curl --noproxy localhost \
   | `custom` | Custom Schema |
 
 
-- **`USER_NTID`** – User session identifier(Optional).
-
 - **`SBOM_File_Path`** – Path to the SBOM file to be uploaded.
 
 - **`Schema_File_Path`** – Path to the Custom Schema file to be uploaded.
@@ -116,7 +114,7 @@ curl --noproxy localhost \
 ```bash
 curl --noproxy localhost \
      --location "http://localhost:9053/customValidate\" \
-     --form "postData={\"schemaType\":\"custom",\"sessionId\":\"TEE123\"}" \
+     --form "postData={\"schemaType\":\"custom"}" \
      --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json" --form "schemaFile=@C:\Users\SEPIA\CYDX-1.6\CycloneDX_Schema.json"
 ```
 
@@ -124,7 +122,7 @@ curl --noproxy localhost \
 ```bash
 curl --noproxy localhost \
      --location "http://localhost:9053/customValidate\" \
-     --form "postData={\"schemaType\":\"custom",\"sessionId\":\"TEE123\"}" \
+     --form "postData={\"schemaType\":\"custom"}" \
      --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json" --form "schemaFile=@C:\Users\SEPIA\CYDX-1.6\CycloneDX_Schema.json" -o "C:\Users\SEPIA\SPDX-2.3\edited-CycloneDX_log.txt"
 ```
 ---
@@ -167,7 +165,7 @@ The merged result BOM documents SPDX ID establishes the `describes` relationship
 ```bash
 curl --noproxy localhost \
      --location "API_PATH" \
-     --form "postData={\"schemaType\":\"SELECT_SchemaType\",\"sessionId\":\"USERID\"}" \
+     --form "postData={\"schemaType\":\"SELECT_SchemaType\"}" \
      --form "file=@SBOM_File_Path" --form "manifestFile=@ManifestFile_Path"
 ```
 
@@ -186,7 +184,6 @@ curl --noproxy localhost \
   | `spdx` | SPDX v2.3 |
   | `cdqspdx2.3` | SEPIA SPDX v2.3 |
 
-- **`USERID`** – User session identifier(Optional).
 
 - **`SBOM_File_Path`** – Path to the SBOM files to be merged.
 
@@ -349,7 +346,7 @@ curl --noproxy localhost \
 ```bash
 curl --noproxy localhost \
      --location "http://localhost:9053/validateAndMerge\" \
-     --form "postData={\"schemaType\":\"cdqcydx",\"sessionId\":\"TEE123\"}" \
+     --form "postData={\"schemaType\":\"cdqcydx"}" \
      --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json,C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-2.json,C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-3.json"
      --form "manifestFile=@C:\Users\SEPIA\Manifest_Files\CycloneDX1.6.json"
 ```
