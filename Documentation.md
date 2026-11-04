@@ -39,17 +39,14 @@ Any changes made by the user can be viewed in the **ChangeLog** tab.
 ### 2. Upload & Validate SBOM File via `curl`
 
 ```bash
-curl --noproxy localhost \
-     --location "API_PATH" \
-     --form "postData={\"schemaType\":\"SELECT_SchemaType\",\"sessionId\":\"USERID\"}" \
-     --form "file=@SBOM_File_Path"
+curl --noproxy localhost --location "API_PATH" --form "postData={\"schemaType\":\"SELECT_SchemaType\",\"sessionId\":\"USERID\"}" --form "file=@SBOM_File_Path"
 ```
 
 #### Parameters
 
 - **`API_PATH`** – Backend service hosted location
   Example:
-  - `http://localhost:9053/uploadAndValidate\`
+  - `http://localhost:9053/uploadAndValidate`
 
 - **`SELECT_SchemaType`** – Indicates the uploaded file schema type:
 
@@ -68,18 +65,12 @@ curl --noproxy localhost \
 
 #### Example
 ```bash
-curl --noproxy localhost \
-     --location "http://localhost:9053/uploadAndValidate\" \
-     --form "postData={\"schemaType\":\"cdqcydx",\"sessionId\":\"TEE123\"}" \
-     --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json"
+curl --noproxy localhost --location "http://localhost:9053/uploadAndValidate" --form "postData={\"schemaType\":\"cdqcydx",\"sessionId\":\"TEE123\"}" --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json"
 ```
 
 #### Example for generating log details in to a file
 ```bash
-curl --noproxy localhost \
-     --location "http://localhost:9053/uploadAndValidate\" \
-     --form "postData={\"schemaType\":\"cdqcydx",\"sessionId\":\"TEE123\"}" \
-     --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json" -o "C:\Users\SEPIA\SPDX-2.3\edited-Spdx-Valid-1_log.txt"
+curl --noproxy localhost --location "http://localhost:9053/uploadAndValidate" --form "postData={\"schemaType\":\"cdqcydx",\"sessionId\":\"TEE123\"}" --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json" -o "C:\Users\SEPIA\SPDX-2.3\edited-Spdx-Valid-1_log.txt"
 ```
 
 ###  Upload & Validate SBOM File using Custom Schema via `curl`
