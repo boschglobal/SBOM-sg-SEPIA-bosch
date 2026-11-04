@@ -45,7 +45,7 @@
 			<scope>runtime</scope>
 			<optional>true</optional>
 		</dependency>
-
+      <!--
 		<dependency>
 			<groupId>io.springfox</groupId>
 			<artifactId>springfox-swagger2</artifactId>
@@ -59,7 +59,13 @@
 			<version>2.6.1</version>
 			<scope>compile</scope>
 		</dependency>
-
+		-->
+		<dependency>
+		    <groupId>org.springdoc</groupId>
+		    <artifactId>springdoc-openapi-ui</artifactId>
+		    <version>1.8.0</version>
+		</dependency>
+		
 		<dependency>
 			<groupId>org.json</groupId>
 			<artifactId>json</artifactId>

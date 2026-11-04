@@ -14,7 +14,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
-import io.swagger.annotations.ApiModelProperty;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -29,13 +29,13 @@ import lombok.Setter;
 
 public class BomFilesInputModel {
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private String inputType;
 	
-	@ApiModelProperty(required = true)
+	@Schema(requiredMode = Schema.RequiredMode.REQUIRED)
 	private String schemaType;
 	
-	@ApiModelProperty(required = true)
+	@Schema(requiredMode = Schema.RequiredMode.REQUIRED)
 	private String schemaVersion;
 	
 	@JsonIgnore
@@ -43,54 +43,54 @@ public class BomFilesInputModel {
 	
 	private MultipartFile schemaFile;
 	
-	@ApiModelProperty(required = true)
+	@Schema(requiredMode = Schema.RequiredMode.REQUIRED)
 	private boolean schema;
 	
-	@ApiModelProperty(required = true)
+	@Schema(requiredMode = Schema.RequiredMode.REQUIRED)
 	private int index;
 	
-	@ApiModelProperty(required = true)
+	@Schema(requiredMode = Schema.RequiredMode.REQUIRED)
 	//private String timestamp;
 	private String sessionId;
 	
-	@ApiModelProperty(hidden = true)
+	@Schema(hidden = true)
 	private String sbomJsonString;
 	
-	@ApiModelProperty(hidden = true)
+	@Schema(hidden = true)
 	private String schemaJsonString;
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private boolean valid;
 	private String filePath;
 	
-	@ApiModelProperty(hidden = true)
+	@Schema(hidden = true)
 	private boolean validatedAlready;
 	
-	@ApiModelProperty(required = true)
+	@Schema(requiredMode = Schema.RequiredMode.REQUIRED)
 	private String sbomFileName;
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private String schemaFileName;
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private List<ErrorModel> errorDetails = new ArrayList<>();
 	
-	@ApiModelProperty(hidden = true)
+	@Schema(hidden = true)
 	private String dirName;
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private List<ChangeLog> changeLogsList;
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private String fileHash;
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private List<ErrorModel> customErrorDetails;
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private Object sbomJson;
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private Object schemaJson;
 	
 	public void addErrorModel(List<ErrorModel> errorModel) {
@@ -100,30 +100,30 @@ public class BomFilesInputModel {
         this.errorDetails.addAll(errorModel);
     }
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private String logOutputPath;
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private String fossidServer;
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private String apiKey;
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private String scanCode;
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private String ntid;
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private String message;
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private Integer status;
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private List<org.openchainproject.sepia.loss.LossEvent> lossEvent = new ArrayList<>();
 	
-	@ApiModelProperty(required = false)
+	@Schema(requiredMode = Schema.RequiredMode.NOT_REQUIRED)
 	private List<org.openchainproject.sepia.loss.ConversionDelta> conversionDeltas = new ArrayList<>();
 }

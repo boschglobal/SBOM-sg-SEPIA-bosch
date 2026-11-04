@@ -14,14 +14,9 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import springfox.documentation.builders.PathSelectors;
-import springfox.documentation.builders.RequestHandlerSelectors;
-import springfox.documentation.spi.DocumentationType;
-import springfox.documentation.spring.web.plugins.Docket;
-import springfox.documentation.swagger2.annotations.EnableSwagger2;
+import org.springdoc.core.GroupedOpenApi;
 
 @Configuration
-@EnableSwagger2
 public class SbomUtilsServiceAppConfig {
 
 
@@ -40,9 +35,12 @@ public class SbomUtilsServiceAppConfig {
 	}
 
 	@Bean
-	public Docket api() {
-		return new Docket(DocumentationType.SWAGGER_2).select().apis(RequestHandlerSelectors.basePackage("org.openchainproject.sepia.controller"))
-				.paths(PathSelectors.any()).build();
+	public GroupedOpenApi api() {
+		return GroupedOpenApi.builder()
+				.group("sbom-utils")
+				.packagesToScan("org.openchainproject.sepia.controller")
+				.pathsToMatch("/**")
+				.build();
 	}
 	
 	@Bean

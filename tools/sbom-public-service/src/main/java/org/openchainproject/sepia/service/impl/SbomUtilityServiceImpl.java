@@ -544,12 +544,12 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 	}
 	
 	@Override 
-	public BomFilesInputModel validateAndConvertFromAPI(Optional<MultipartFile> inputFile, BomFilesInputModel sbomInputModel) {
+	public BomFilesInputModel validateAndConvertFromAPI(MultipartFile inputFile, BomFilesInputModel sbomInputModel) {
 		BomFilesInputModel bomFilesInputModel = null;
 		BomFilesInputModel sbomConvertedModel = new BomFilesInputModel();
 		boolean isConvertPossible = true;
 		try {
-				MultipartFile file = inputFile.get();
+				MultipartFile file = inputFile;
 				VersionFlag versionFlag = null;
 				String schemaFileName = null;
 				ObjectMapper mapper = new ObjectMapper();
@@ -680,7 +680,7 @@ public class SbomUtilityServiceImpl implements SbomUtilityService {
 				}else {
 					sbomConvertedModel = service.convert(source,Constants.SPDX_LC,Constants.VER2_3,Constants.CYCLONEDX_LC,Constants.VER1_6);
 					sbomConvertedModel.setSchemaType(Constants.CDQ_CYDX1_6_LC);
-					sbomConvertedModel.setSchemaVersion("2.3");
+					sbomConvertedModel.setSchemaVersion("1.6");
 					sbomConvertedModel = validateSboms(sbomConvertedModel, true, false);
 				}
 				

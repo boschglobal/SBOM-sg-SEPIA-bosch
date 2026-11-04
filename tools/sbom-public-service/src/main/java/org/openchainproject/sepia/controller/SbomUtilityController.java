@@ -41,6 +41,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -49,14 +50,24 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.swagger.annotations.ApiOperation;
-import springfox.documentation.annotations.ApiIgnore;
+
+import io.swagger.v3.oas.annotations.Hidden;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+
+
 import org.openchainproject.sepia.util.Constants;
 import javax.validation.Validation;
 import javax.validation.Validator;
 import javax.validation.ValidatorFactory;
 import javax.validation.ConstraintViolation;
 import java.util.Set;
+
+import org.springframework.http.MediaType;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Schema;
+
 
 /**
  * 
@@ -79,7 +90,7 @@ public class SbomUtilityController {
 
     
 	
-	@ApiOperation(value = "Health check for SBOM Validator API")
+	@Operation(summary = "Health check for SBOM Validator API", description = "Returns the health status of the SBOM Validator API along with the user ID from the request headers.")
 	@GetMapping("/health")
     public ResponseEntity<Map<String, String>> getHealth(@RequestHeader HttpHeaders headers) {
         // Perform any necessary health checks here
@@ -97,7 +108,7 @@ public class SbomUtilityController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-	@ApiIgnore
+	@Hidden
 	@PostMapping(path = "/uploadInputFile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public BomFilesInputModel uploadInputFile(@RequestParam("file") Optional<MultipartFile[]> inputFile,
 			@RequestParam("postData") String postData) {
@@ -126,7 +137,7 @@ public class SbomUtilityController {
 		return sbomInputModel;
 	}
 
-	@ApiIgnore
+	@Hidden
 	@PostMapping(path = "/deleteSbomEntry")
 	public BomFilesInputModel deleteSbomEntry(@RequestParam("postData") String postData) {
 
@@ -142,7 +153,7 @@ public class SbomUtilityController {
 		return sbomInputModel;
 	}
 
-	@ApiIgnore
+	@Hidden
 	@PostMapping(path = "/clearSession")
 	public void clearSession(@RequestParam("postData") String postData) {
 
@@ -156,7 +167,7 @@ public class SbomUtilityController {
 		}
 	}
 
-	@ApiIgnore
+	@Hidden
 	@PostMapping(path = "/validateSboms", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public BomFilesInputModel validateSboms(@RequestParam("postData") String postData) {
 		BomFilesInputModel sbomInputModel = null;
@@ -178,7 +189,7 @@ public class SbomUtilityController {
 		return sbomInputModel;
 	}
 
-	@ApiIgnore
+	@Hidden
 	@PostMapping(path = "/fetchErrorDetails")
 	public BomFilesInputModel fetchErrorDetails(@RequestParam("postData") String postData) {
 		BomFilesInputModel sbomInputModel = new BomFilesInputModel();
@@ -195,7 +206,7 @@ public class SbomUtilityController {
 		return sbomInputModel;
 	}
 
-	@ApiIgnore
+	@Hidden
 	@PostMapping("/fetchJsonContent")
 	public BomFilesInputModel fetchJsonContent(@RequestParam("postData") String postData) {
 		BomFilesInputModel sbomInputModel = new BomFilesInputModel();
@@ -212,7 +223,7 @@ public class SbomUtilityController {
 		return sbomInputModel;
 	}
 
-	@ApiOperation(value = "Merge 2 or more valid CycloneDx V1.4 SBOMs with this API")
+	@Operation(summary = "Merge 2 or more valid CycloneDx V1.4 SBOMs with this API", description = "This endpoint allows you to merge multiple valid CycloneDx V1.4 SBOMs into a single SBOM. Provide the SBOMs and metadata in the request body.",hidden = true)
 	@PostMapping("/mergeCyclonedx")
 	public BomFilesInputModel mergeCyclonedxSboms(@RequestParam("postData") String postData,
 			@RequestParam("bomMetadata") String bomMetadata, @RequestParam(value = "isFromApp", required = false) boolean isFromApp) {
@@ -239,7 +250,7 @@ public class SbomUtilityController {
 		return mergedBomInput;
 	}
 
-	@ApiOperation(value = "Merge 2 or more valid SPDX V2.3 SBOMs with this API")
+	@Operation(summary = "Merge 2 or more valid SPDX V2.3 SBOMs with this API", description = "This endpoint allows you to merge multiple valid SPDX V2.3 SBOMs into a single SBOM. Provide the SBOMs and metadata in the request body.",hidden = true)
 	@PostMapping("/mergeSpdx")
 	public BomFilesInputModel mergeSpdxSboms(@RequestParam("postData") String postData,
 			@RequestParam("bomMetadata") String bomMetadata, @RequestParam(value = "isFromApp", required = false) boolean isFromApp) {
@@ -262,7 +273,7 @@ public class SbomUtilityController {
 		return mergedBomInput;
 	}
 	
-	@ApiOperation(value = "covert SBOMs")
+	@Operation(summary = "Convert SBOMs between CycloneDx V1.6 and SPDX V2.3", description = "This endpoint allows you to convert a valid CycloneDx V1.6 SBOM to SPDX V2.3 or vice versa. Provide the SBOM and its schema type in the request body.",hidden = true)
 	@PostMapping("/convertSbom")
 	public BomFilesInputModel convertSbom(@RequestParam("postData") String postData,@RequestParam(value = "isFromApp", required = false) boolean isFromApp) {
 		BomFilesInputModel sbomInputModel = new BomFilesInputModel();
@@ -294,7 +305,7 @@ public class SbomUtilityController {
 	}
 	
 
-	@ApiIgnore
+	@Hidden
 	@PostMapping(path = "/replaceFile")
 	public BomFilesInputModel replaceFile(@RequestParam("postData") String postData) {
 		BomFilesInputModel sbomInputModel = new BomFilesInputModel();
@@ -311,7 +322,7 @@ public class SbomUtilityController {
 		return sbomInputModel;
 	}
 
-	@ApiIgnore
+	@Hidden
 	@PostMapping(path = "/getJsonDifferences")
 	public List<ChangeLog> getJsonDifferences(@RequestParam("currentValue") String currentValue,
 			@RequestParam("postData") String postData,@RequestParam("isMerge") Boolean isMerge) {
@@ -329,7 +340,7 @@ public class SbomUtilityController {
 		return changeLogsList;
 	}
 
-	@ApiIgnore
+	@Hidden
 	@PostMapping(path = "/prepareForDownload")
 	public BomFilesInputModel prepareForDownload(@RequestParam("currentValue") String currentValue,
 			@RequestParam("postData") String postData) {
@@ -347,10 +358,16 @@ public class SbomUtilityController {
 		return bomFilesInputModel;
 	}
 	
-	@ApiOperation(value = "Upload an input SBOM of type CycloneDx V1.4 or SPDX V2.3 and get it validated")
+	@Operation(summary = "Upload an input SBOM of type CycloneDx V1.4,CycloneDx V1.6 or SPDX V2.3 and get it validated", description = "This endpoint allows you to upload a single SBOM file (CycloneDx V1.4, CycloneDx V1.6, or SPDX V2.3) along with its metadata in the request body. The API will validate the uploaded SBOM against its declared schema type and return the validation results.")
 	@PostMapping(path = "/uploadAndValidate", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	public ObjectNode uploadAndValidate(@RequestParam("file") Optional<MultipartFile[]> inputFile,
-			@RequestParam("postData") String postData) {
+	public ObjectNode uploadAndValidate(
+			@Parameter(description = "Select the JSON file to upload")
+            @RequestPart("file") MultipartFile inputFile,
+            @Parameter(description = "Enter the postData in the following JSON string format: {\"schemaType\":\"cyclonedx\",\"sessionId\":\"your-session-id\"}.\n\n"
+            		+ "Allowed values for schemaType(*): cyclonedx, spdx, cdqspdx2.3, cdqcydx.\n\n"
+            				+ "The sessionId is optional.")
+            @RequestPart("postData") String postData
+            ) {
 		BomFilesInputModel sbomInputModel = null;
 		ObjectMapper mapper = new ObjectMapper();
 		try {
@@ -373,10 +390,7 @@ public class SbomUtilityController {
 			}
 
 			// 2) Validate uploaded file is a .json file
-			String uploadedFileName = null;
-			if (inputFile.isPresent() && inputFile.get().length > 0 && inputFile.get()[0] != null) {
-				uploadedFileName = inputFile.get()[0].getOriginalFilename();
-			}
+			String uploadedFileName = inputFile != null ? inputFile.getOriginalFilename() : null;
 			if (uploadedFileName == null || uploadedFileName.trim().isEmpty()) {
 				uploadedFileName = sbomInputModel.getSbomFileName();
 			}
@@ -386,13 +400,14 @@ public class SbomUtilityController {
 			}
 
 			// 3) Validate that the JSON content actually matches the declared schemaType
-			String contentMismatch = validateSbomContentMatchesSchemaType(mapper, inputFile, schemaType);
+			Optional<MultipartFile[]> multipartInputFile = Optional.of(new MultipartFile[] { inputFile });
+			String contentMismatch = validateSbomContentMatchesSchemaType(mapper, multipartInputFile, schemaType);
 			if (contentMismatch != null) {
 				return buildUploadErrorResponse(mapper, sbomInputModel, contentMismatch);
 			}
 			// ----------------------------------------------------------------------
 
-			sbomInputModel = sbomUtilityService.uploadInputFile(inputFile, sbomInputModel, true);
+			sbomInputModel = sbomUtilityService.uploadInputFile(multipartInputFile, sbomInputModel, true);
 		} catch (Exception e) {
 			LOGGER.error("Exception occurred while the given information inside uploadAndValidate()", e);
 			return buildUploadErrorResponse(mapper, sbomInputModel,
@@ -505,7 +520,7 @@ public class SbomUtilityController {
 		return null;
 	}
 	
-	@ApiIgnore
+	@Hidden
 	@GetMapping(value = "/downloadUserManual", produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
 	public void downloaderUnattended(HttpServletRequest request, HttpServletResponse response) {
  
@@ -519,12 +534,17 @@ public class SbomUtilityController {
 		}
  
 	}
-		@ApiOperation(value = "Upload a BOM file and Schema file and and get it validated")
-		@PostMapping(path = "/customValidate", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-		public ObjectNode customValidate(
-				@RequestParam("file") Optional<MultipartFile[]> inputFile,
-				@RequestParam("schemaFile") Optional<MultipartFile[]> schemaFile,
-				@RequestParam("postData") String postData) {
+		
+	@Operation(summary = "Upload a BOM file and Schema file and and get it validated", description = "This endpoint allows you to upload a single BOM file along with its corresponding schema file. The API will validate the uploaded BOM against the provided schema and return the validation results.")
+	@PostMapping(path = "/customValidate", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ObjectNode customValidate(
+			    @Parameter(description = "Select the JSON file to upload")
+				@RequestPart("file") MultipartFile inputFile,
+				@Parameter(description = "Select the Schema JSON file to upload")
+				@RequestParam("schemaFile") MultipartFile schemaFile,
+				@Parameter(description = "Enter the postData in the following JSON string format: {\"schemaType\":\"custom\"}.",
+						schema = @Schema(type = "string", defaultValue = "{\"schemaType\":\"custom\"}", example = "{\"schemaType\":\"custom\"}"))
+				@RequestPart("postData") String postData) {
 			BomFilesInputModel sbomInputModel = null;
 			ObjectMapper mapper = new ObjectMapper();
 			try {
@@ -541,10 +561,7 @@ public class SbomUtilityController {
 				}
 	 
 				// 2) Validate uploaded file is a .json file
-				String uploadedFileName = null;
-				if (inputFile.isPresent() && inputFile.get().length > 0 && inputFile.get()[0] != null) {
-					uploadedFileName = inputFile.get()[0].getOriginalFilename();
-				}
+				String uploadedFileName = inputFile != null ? inputFile.getOriginalFilename() : null;
 				if (uploadedFileName == null || uploadedFileName.trim().isEmpty()) {
 					uploadedFileName = sbomInputModel.getSbomFileName();
 				}
@@ -552,16 +569,19 @@ public class SbomUtilityController {
 					return buildUploadErrorResponse(mapper, sbomInputModel,
 							"Invalid file '" + uploadedFileName + "'. Only .json files are accepted for upload.");
 				}else {
-					sbomInputModel = sbomUtilityService.uploadInputFile(inputFile, sbomInputModel, true);
+					Optional<MultipartFile[]> multipartInputFile = Optional.of(new MultipartFile[] { inputFile });
+					sbomInputModel = sbomUtilityService.uploadInputFile(multipartInputFile, sbomInputModel, true);
 				}
 	 
 				// 3) Read the custom schema file and set it in the model
-				if (schemaFile.isPresent() && schemaFile.get().length > 0 && schemaFile.get()[0] != null) {
-					MultipartFile schemaMultipart = schemaFile.get()[0];
-					String schemaContent = new String(schemaMultipart.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
+
+				String uploadedschemaFileName = schemaFile != null ? schemaFile.getOriginalFilename() : null;
+				if(uploadedschemaFileName!= null && !uploadedschemaFileName.trim().isEmpty() && uploadedschemaFileName.toLowerCase().endsWith(".json")) {
+					String schemaContent = new String(schemaFile.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
 					sbomInputModel.setSchemaJsonString(schemaContent);
 					sbomInputModel.setSchema(true);
-					sbomInputModel = sbomUtilityService.uploadInputFile(schemaFile, sbomInputModel, true);
+					Optional<MultipartFile[]> multipartSchemaInputFile = Optional.of(new MultipartFile[] { schemaFile });
+					sbomInputModel = sbomUtilityService.uploadInputFile(multipartSchemaInputFile, sbomInputModel, true);
 				} else {
 					return buildUploadErrorResponse(mapper, sbomInputModel,
 							"Custom schema file (Schemafile) is missing or empty.");
@@ -581,11 +601,14 @@ public class SbomUtilityController {
 			return responseNode;
 		}
 	
-	@ApiOperation(value = "Upload BOM files for Convert operation through API")
+	@Operation(summary = "Upload SEPIA SPDX V2.3,SEPIA CycloneDX V1.6 BOM files for Convert operation through API", description = "This endpoint allows you to upload a single SBOM file (CycloneDx V1.6 or SPDX V2.3) along with its metadata in the request body. The API will validate the uploaded SBOM against its declared schema type and return the validation results.")
 	@PostMapping(path = "/validateAndConvert", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ObjectNode validateAndConvert(
-			   @RequestParam("file") Optional<MultipartFile> inputFile,
-			   @RequestParam("postData") String postData) {
+			   @Parameter(description = "Select the JSON file to upload")
+			   @RequestPart("file") MultipartFile inputFile,
+			   @Parameter(description = "Enter the postData in the following JSON string format: {\"schemaType\":\"cdqcydx\"}.\n\n"
+	            		+ "Allowed values for schemaType(*):cdqspdx2.3, cdqcydx.")
+			   @RequestPart("postData") String postData) {
 		       
 		       BomFilesInputModel sbomInputModel = null;
 		       BomFilesInputModel sbomConvertedModel = new BomFilesInputModel();
@@ -608,25 +631,19 @@ public class SbomUtilityController {
 				   }
 				   
 				   // 2) Validate all uploaded files are .json files
-				   if (!inputFile.isPresent() || inputFile.get().isEmpty()) {
-					   return buildUploadErrorResponse(mapper, sbomInputModel,
-							   "No files uploaded for convert operation.");
-				   }
-				   
-				   MultipartFile file = inputFile.get();
-				   String uploadedFileName = file != null ? file.getOriginalFilename() : null;
-				   if (uploadedFileName == null || uploadedFileName.trim().isEmpty()) {
-					   uploadedFileName = sbomInputModel.getSbomFileName();
-				   }
-				   if (uploadedFileName == null || !uploadedFileName.toLowerCase().endsWith(".json")) {
-					   return buildUploadErrorResponse(mapper, sbomInputModel,
-							   "Invalid file '" + uploadedFileName + ". Only .json files are accepted for upload.");
-				   }
+				   String uploadedFileName = inputFile != null ? inputFile.getOriginalFilename() : null;
+					if (uploadedFileName == null || uploadedFileName.trim().isEmpty()) {
+						uploadedFileName = sbomInputModel.getSbomFileName();
+					}
+					if (uploadedFileName == null || !uploadedFileName.toLowerCase().endsWith(".json")) {
+						return buildUploadErrorResponse(mapper, sbomInputModel,
+								"Invalid file '" + uploadedFileName + "'. Only .json files are accepted for upload.");
+					}
 				   // 3) Validate that the JSON content actually matches the declared schemaType
 				   String contentMismatch = null;
 				   try {
 					   // Use a single-file Optional for validation helper
-					   MultipartFile[] singleFileArr = new MultipartFile[] { file };
+					   MultipartFile[] singleFileArr = new MultipartFile[] { inputFile };
 					   contentMismatch = validateSbomContentMatchesSchemaType(mapper, Optional.of(singleFileArr), schemaType);
 				   } catch (Exception ex) {
 					   contentMismatch = "Error reading file '" + uploadedFileName + ex.getMessage();
@@ -665,12 +682,16 @@ public class SbomUtilityController {
 		
 	}
 		
-		   @ApiOperation(value = "Upload multiple BOM files for merge operation")
-		   @PostMapping(path = "/validateAndMerge", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-		   public ObjectNode validateAndMerge(
-				   @RequestParam("file") Optional<MultipartFile[]> inputFile,
-				   @RequestParam("manifestFile") Optional<MultipartFile[]> manifestFile,
-				   @RequestParam("postData") String postData) {
+	@Operation(summary = "Upload multiple BOM files for merge operation", description = "This endpoint allows you to upload multiple SBOM files (CycloneDx V1.4, CycloneDx V1.6, or SPDX V2.3) along with their metadata in the request body. The API will validate the uploaded SBOMs against their declared schema types and return the validation results.")
+	@PostMapping(path = "/validateAndMerge", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ObjectNode validateAndMerge(
+			       @Parameter(description = "Select the JSON files to upload")
+				   @RequestPart("file") Optional<MultipartFile[]> inputFile,
+				   @Parameter(description = "Select the SBOM Manifest (Information of merged SBOM metadata) JSON file to upload")
+				   @RequestPart("manifestFile") MultipartFile manifestFile,
+				   @Parameter(description = "Enter the postData in the following JSON string format: {\"schemaType\":\"cyclonedx\"}.\n\n"
+		            		+ "Allowed values for schemaType(*): cyclonedx, spdx, cdqspdx2.3, cdqcydx.")
+				   @RequestPart("postData") String postData) {
 
 			   BomFilesInputModel sbomInputModel = null;
 			   List<BomFilesInputModel> bomMergeResultList = new ArrayList<>();
@@ -731,21 +752,20 @@ public class SbomUtilityController {
 				   }
 				   
 				   // Validate manifestFile if present
-				   if (manifestFile.isPresent() && manifestFile.get().length > 0 && manifestFile.get()[0] != null) {
-					   MultipartFile mf = manifestFile.get()[0];
-					   String manifestFileName = mf.getOriginalFilename();
+				   if(manifestFile != null && !manifestFile.isEmpty()) {
+					   String manifestFileName = manifestFile.getOriginalFilename();
 					   if (manifestFileName == null || !manifestFileName.toLowerCase().endsWith(".json")) {
 						   return buildUploadErrorResponse(mapper, sbomInputModel,
 								   "Invalid manifestFile '" + manifestFileName + "'. Only .json files are accepted for upload.");
 					   }
 					   try {
-						   manifestContent = new String(mf.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
+						   manifestContent = new String(manifestFile.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
 					   } catch (Exception e) {
 						   return buildUploadErrorResponse(mapper, sbomInputModel,
 								   "Manifest file is not a valid JSON document: " + e.getMessage());
 					   }
 					   // Additional manifest validation for schemaType
-					   String manifestValidationError = validateManifestFileForSchemaType(manifestContent, schemaType,mf);
+					   String manifestValidationError = validateManifestFileForSchemaType(manifestContent, schemaType,manifestFile);
 					   if (manifestValidationError != null) {
 						   return buildUploadErrorResponse(mapper, sbomInputModel, manifestValidationError);
 					   }
