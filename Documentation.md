@@ -65,21 +65,18 @@ curl --noproxy localhost --location "API_PATH" --form "postData={\"schemaType\":
 
 #### Example
 ```bash
-curl --noproxy localhost --location "http://localhost:9053/uploadAndValidate" --form "postData={\"schemaType\":\"cdqcydx",\"sessionId\":\"TEE123\"}" --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json"
+curl --noproxy localhost --location "http://localhost:9053/uploadAndValidate" --form "postData={\"schemaType\":\"cdqcydx\",\"sessionId\":\"TEE123\"}" --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json"
 ```
 
 #### Example for generating log details in to a file
 ```bash
-curl --noproxy localhost --location "http://localhost:9053/uploadAndValidate" --form "postData={\"schemaType\":\"cdqcydx",\"sessionId\":\"TEE123\"}" --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json" -o "C:\Users\SEPIA\SPDX-2.3\edited-Spdx-Valid-1_log.txt"
+curl --noproxy localhost --location "http://localhost:9053/uploadAndValidate" --form "postData={\"schemaType\":\"cdqcydx\",\"sessionId\":\"TEE123\"}" --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json" -o "C:\Users\SEPIA\SPDX-2.3\edited-Spdx-Valid-1_log.txt"
 ```
 
 ###  Upload & Validate SBOM File using Custom Schema via `curl`
 
 ```bash
-curl --noproxy localhost \
-     --location "API_PATH" \
-     --form "postData={\"schemaType\":\"custom\"}" \
-     --form "file=@SBOM_File_Path" --form "schemaFile=@Schema_File_Path"
+curl --noproxy localhost --location "API_PATH" --form "postData={\"schemaType\":\"custom\"}" --form "file=@SBOM_File_Path" --form "schemaFile=@Schema_File_Path"
 ```
 
 #### Parameters
@@ -103,18 +100,12 @@ curl --noproxy localhost \
 #### Example
 
 ```bash
-curl --noproxy localhost \
-     --location "http://localhost:9053/customValidate\" \
-     --form "postData={\"schemaType\":\"custom"}" \
-     --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json" --form "schemaFile=@C:\Users\SEPIA\CYDX-1.6\CycloneDX_Schema.json"
+curl --noproxy localhost --location "http://localhost:9053/customValidate" --form "postData={\"schemaType\":\"custom\"}" --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json" --form "schemaFile=@C:\Users\SEPIA\CYDX-1.6\CycloneDX_Schema.json"
 ```
 
 #### Example for generating log details in to a file
 ```bash
-curl --noproxy localhost \
-     --location "http://localhost:9053/customValidate\" \
-     --form "postData={\"schemaType\":\"custom"}" \
-     --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json" --form "schemaFile=@C:\Users\SEPIA\CYDX-1.6\CycloneDX_Schema.json" -o "C:\Users\SEPIA\SPDX-2.3\edited-CycloneDX_log.txt"
+curl --noproxy localhost --location "http://localhost:9053/customValidate" --form "postData={\"schemaType\":\"custom\"}" --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json" --form "schemaFile=@C:\Users\SEPIA\CYDX-1.6\CycloneDX_Schema.json" -o "C:\Users\SEPIA\SPDX-2.3\edited-CycloneDX_log.txt"
 ```
 ---
 
@@ -154,10 +145,7 @@ The merged result BOM documents SPDX ID establishes the `describes` relationship
 ### 2. Merge SBOM Files via `curl`
 
 ```bash
-curl --noproxy localhost \
-     --location "API_PATH" \
-     --form "postData={\"schemaType\":\"SELECT_SchemaType\"}" \
-     --form "file=@SBOM_File_Path" --form "manifestFile=@ManifestFile_Path"
+curl --noproxy localhost --location "API_PATH" --form "postData={\"schemaType\":\"SELECT_SchemaType\"}" --form "file=@SBOM_File_Path" --form "manifestFile=@ManifestFile_Path"
 ```
 
 #### Parameters
@@ -335,11 +323,7 @@ curl --noproxy localhost \
 
 #### Example
 ```bash
-curl --noproxy localhost \
-     --location "http://localhost:9053/validateAndMerge\" \
-     --form "postData={\"schemaType\":\"cdqcydx"}" \
-     --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json,C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-2.json,C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-3.json"
-     --form "manifestFile=@C:\Users\SEPIA\Manifest_Files\CycloneDX1.6.json"
+curl --noproxy localhost --location "http://localhost:9053/validateAndMerge" --form "postData={\"schemaType\":\"cdqcydx"}" --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json,C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-2.json,C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-3.json" --form "manifestFile=@C:\Users\SEPIA\Manifest_Files\CycloneDX1.6.json"
 ```
 
 ---
@@ -467,10 +451,7 @@ The description of each Rule-level properties are explained in the TECHNICAL_DOC
 
 
 ```bash
-curl --noproxy localhost \
-     --location "API_PATH" \
-     --form "postData={\"schemaType\":\"SELECT_SchemaType\"}" \
-     --form "file=@SBOM_File_Path"
+curl --noproxy localhost --location "API_PATH" --form "postData={\"schemaType\":\"SELECT_SchemaType\"}" --form "file=@SBOM_File_Path"
 ```
 
 #### Parameters
@@ -492,9 +473,7 @@ curl --noproxy localhost \
 #### Example
 ```bash
 curl --noproxy localhost \
-     --location "http://localhost:9053/validateAndConvert\" \
-     --form "postData={\"schemaType\":\"cdqcydx"}" \
-     --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json"
+     --location "http://localhost:9053/validateAndConvert" --form "postData={\"schemaType\":\"cdqcydx\"}" --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json"
 ```
 
 ---
