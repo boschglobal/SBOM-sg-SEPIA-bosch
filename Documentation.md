@@ -152,7 +152,7 @@ curl --noproxy localhost --location "API_PATH" --form "postData={\"schemaType\":
 
 - **`API_PATH`** – Backend service hosted location.
   Example:
-   - 'http://localhost:9053/validateAndMerge'
+   - `http://localhost:9053/validateAndMerge`
 
 - **`SELECT_SchemaType`** – Indicates the uploaded file schema type:
 
@@ -323,7 +323,7 @@ curl --noproxy localhost --location "API_PATH" --form "postData={\"schemaType\":
 
 #### Example
 ```bash
-curl --noproxy localhost --location "http://localhost:9053/validateAndMerge" --form "postData={\"schemaType\":\"cdqcydx"}" --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json,C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-2.json,C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-3.json" --form "manifestFile=@C:\Users\SEPIA\Manifest_Files\CycloneDX1.6.json"
+curl --noproxy localhost --location "http://localhost:9053/validateAndMerge" --form "postData={\"schemaType\":\"cdqcydx\"}" --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json,C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-2.json,C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-3.json" --form "manifestFile=@C:\Users\SEPIA\Manifest_Files\CycloneDX1.6.json"
 ```
 
 ---
@@ -472,8 +472,7 @@ curl --noproxy localhost --location "API_PATH" --form "postData={\"schemaType\":
 
 #### Example
 ```bash
-curl --noproxy localhost \
-     --location "http://localhost:9053/validateAndConvert" --form "postData={\"schemaType\":\"cdqcydx\"}" --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json"
+curl --noproxy localhost --location "http://localhost:9053/validateAndConvert" --form "postData={\"schemaType\":\"cdqcydx\"}" --form "file=@C:\Users\SEPIA\CYDX-1.6\CycloneDX-Valid-1.json"
 ```
 
 ---
