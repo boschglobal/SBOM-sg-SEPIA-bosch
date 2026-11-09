@@ -421,7 +421,7 @@ Conversion log details are displayed in the Conversion Logs
 ---
 
 ### 4. SBOM Convert Visualizar.
-The user can visualize the conversion between CycloneDX <-> SPDX using the SBOM Visualizar
+The user can visualize the conversion between CycloneDX <-> SPDX using the SBOM Visualizar.
 
 ![alt text](images/convert_visualizer.png)
 --- 
